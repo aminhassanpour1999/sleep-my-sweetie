@@ -156,6 +156,7 @@ GitHub Actions runs the test suite and ShellCheck on pushes, pull requests, and 
     ├── Makefile
     ├── README.md
     ├── SECURITY.md
+    ├── install.sh
     └── uninstall.sh
 
 ## Learn the code
