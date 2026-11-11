@@ -67,8 +67,8 @@ if [ ! -x "$SYSTEMCTL" ]; then
     exit 1
 fi
 
-trap 'printf "\\nShutdown cancelled. Your computer will stay on.\\n" >&2; exit 130' INT
-trap 'printf "\\nShutdown interrupted by a termination signal.\\n" >&2; exit 143' TERM
+trap 'printf "\nShutdown cancelled. Your computer will stay on.\n" >&2; exit 130' INT
+trap 'printf "\nShutdown interrupted by a termination signal.\n" >&2; exit 143' TERM
 
 printf 'Powering off in 5 seconds. Press Ctrl+C to cancel.\n'
 remaining=5
