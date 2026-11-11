@@ -50,7 +50,7 @@ if [ -L "$PREFIX" ] || { [ -e "$PREFIX" ] && [ ! -d "$PREFIX" ]; }; then
     exit 1
 fi
 if [ -L "$LIB_PARENT" ] || { [ -e "$LIB_PARENT" ] && [ ! -d "$LIB_PARENT" ]; }; then
-    printf 'Error: refusing to use a non-directory or symbolic link: %s\\n' "$LIB_PARENT" >&2
+    printf 'Error: refusing to use a non-directory or symbolic link: %s\n' "$LIB_PARENT" >&2
     exit 1
 fi
 if [ -L "$LIB_DIR" ] || { [ -e "$LIB_DIR" ] && [ ! -d "$LIB_DIR" ]; }; then
