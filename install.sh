@@ -91,10 +91,7 @@ done
 
 install -d -m 0755 "$LIB_DIR" "$BIN_DIR"
 TEMP_SCRIPT="$LIB_DIR/.sleep_my_sweetie.tmp.$$"
-cleanup() {
-    [ ! -f "$TEMP_SCRIPT" ] || rm -f "$TEMP_SCRIPT"
-}
-trap cleanup EXIT
+trap '[ ! -f "$TEMP_SCRIPT" ] || rm -f "$TEMP_SCRIPT"' EXIT
 trap 'exit 1' HUP INT TERM
 install -m 0755 "$SOURCE_SCRIPT" "$TEMP_SCRIPT"
 mv -f "$TEMP_SCRIPT" "$INSTALLED_SCRIPT"
