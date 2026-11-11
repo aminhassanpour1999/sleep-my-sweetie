@@ -18,10 +18,28 @@ if [ "$PREFIX" = "/" ]; then
     exit 1
 fi
 
-LIB_DIR="$PREFIX/lib/sleep-my-sweetie"
+LIB_PARENT="$PREFIX/lib"
+LIB_DIR="$LIB_PARENT/sleep-my-sweetie"
 INSTALLED_SCRIPT="$LIB_DIR/sleep_my_sweetie"
 MARKER="$LIB_DIR/.sleep-my-sweetie-managed"
 BIN_DIR="$PREFIX/bin"
+
+if [ -L "$PREFIX" ] || { [ -e "$PREFIX" ] && [ ! -d "$PREFIX" ]; }; then
+    printf 'Error: refusing unsafe PREFIX path: %s\\n' "$PREFIX" >&2
+    exit 1
+fi
+if [ -L "$LIB_PARENT" ] || { [ -e "$LIB_PARENT" ] && [ ! -d "$LIB_PARENT" ]; }; then
+    printf 'Error: refusing unsafe library parent: %s\\n' "$LIB_PARENT" >&2
+    exit 1
+fi
+if [ -L "$BIN_DIR" ] || { [ -e "$BIN_DIR" ] && [ ! -d "$BIN_DIR" ]; }; then
+    printf 'Error: refusing unsafe binary directory: %s\\n' "$BIN_DIR" >&2
+    exit 1
+fi
+if [ -L "$LIB_DIR" ]; then
+    printf 'Error: refusing to follow a symbolic link at: %s\\n' "$LIB_DIR" >&2
+    exit 1
+fi
 ALIASES='
 sleep_my_sweetie
 goodnight_my_love
