@@ -1,31 +1,44 @@
 # Contributing
 
-Thanks for your interest in contributing to Sleep, My Sweetie!
+Thank you for considering a contribution to Sleep, My Sweetie.
 
 ## Project principles
 
 - Keep the project small, understandable, and easy to audit.
-- Preserve the single-implementation design: aliases point to one canonical command.
+- Maintain one canonical implementation; aliases should point to it.
 - Do not add telemetry, network access, background services, or automatic startup behavior.
-- Keep a visible countdown before shutdown.
-- Never make tests power off the developer's machine.
+- Keep a visible countdown before a real shutdown.
+- Never let automated tests power off a developer's or CI machine.
+- Protect unrelated files during installation and uninstallation.
 
-## Development workflow
+## Development setup
 
-1. Fork the repository.
-2. Create a focused branch.
-3. Make your change.
-4. Run `make test`.
-5. If available, run ShellCheck:
+Requirements:
 
-   ```bash
-   shellcheck bin/sleep_my_sweetie install.sh uninstall.sh tests/test-command.sh
-   ```
+- A POSIX-compatible shell.
+- Python 3.
+- ShellCheck (recommended).
 
-6. Explain user-visible behavior and system changes in your pull request.
+Clone the repository and run:
+
+    make test
+    make lint
+
+The test suite uses a mock systemctl executable and temporary installation prefixes. It must never call the real system power-off command.
 
 ## Pull requests
 
-Include a clear description, the reason for the change, test results, and documentation updates when commands or behavior change.
+Please include:
 
-Thank you!
+1. A clear explanation of the problem and proposed change.
+2. The behavior users will observe.
+3. Test results.
+4. Documentation updates when commands, options, installation, or behavior change.
+
+Keep pull requests focused and avoid adding features that make this small utility unnecessarily complicated.
+
+## Security-sensitive changes
+
+Changes to install paths, symbolic links, privilege checks, signal handling, or systemctl execution require particular care. Explain how the change avoids overwriting unrelated files and how it is tested safely.
+
+Thank you for helping improve the project.
