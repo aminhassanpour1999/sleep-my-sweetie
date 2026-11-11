@@ -1,18 +1,27 @@
 #!/bin/sh
-#
-# Remove Sleep, My Sweetie and only its own command symlinks.
-#
+# Remove only a verified Sleep, My Sweetie installation.
 set -eu
 
-if [ "$(id -u)" -ne 0 ]; then
-    printf 'Please run the uninstaller with sudo:\n  sudo ./uninstall.sh\n' >&2
+PREFIX=${PREFIX:-/usr/local}
+MARKER_TEXT='Sleep, My Sweetie managed installation v1'
+if [ "$PREFIX" = "/usr/local" ] && [ "$(id -u)" -ne 0 ]; then
+    printf 'Please run the uninstaller with sudo:\n  sudo sh ./uninstall.sh\n' >&2
+    exit 1
+fi
+case "$PREFIX" in
+    /*) ;;
+    *) printf 'Error: PREFIX must be an absolute path: %s\n' "$PREFIX" >&2; exit 1 ;;
+esac
+while [ "$PREFIX" != "/" ] && [ "${PREFIX%/}" != "$PREFIX" ]; do PREFIX=${PREFIX%/}; done
+if [ "$PREFIX" = "/" ]; then
+    printf 'Error: refusing to uninstall from filesystem root.\n' >&2
     exit 1
 fi
 
-LIB_DIR="/usr/local/lib/sleep-my-sweetie"
+LIB_DIR="$PREFIX/lib/sleep-my-sweetie"
 INSTALLED_SCRIPT="$LIB_DIR/sleep_my_sweetie"
-BIN_DIR="/usr/local/bin"
-
+MARKER="$LIB_DIR/.sleep-my-sweetie-managed"
+BIN_DIR="$PREFIX/bin"
 ALIASES='
 sleep_my_sweetie
 goodnight_my_love
@@ -24,11 +33,19 @@ shut_down_sweetheart
 time_to_sleep
 '
 
+if [ ! -e "$LIB_DIR" ]; then
+    printf 'Sleep, My Sweetie is not installed in %s.\n' "$PREFIX"
+    exit 0
+fi
+if [ -L "$MARKER" ] || [ ! -f "$MARKER" ] || [ "$(cat "$MARKER")" != "$MARKER_TEXT" ]; then
+    printf 'Error: ownership marker missing or invalid. Nothing was removed.\n' >&2
+    exit 1
+fi
+
 for name in $ALIASES; do
     target="$BIN_DIR/$name"
     if [ -L "$target" ]; then
-        link_target=$(readlink "$target")
-        if [ "$link_target" = "$INSTALLED_SCRIPT" ]; then
+        if [ "$(readlink "$target")" = "$INSTALLED_SCRIPT" ]; then
             rm -- "$target"
             printf 'Removed alias: %s\n' "$target"
         else
@@ -39,13 +56,11 @@ for name in $ALIASES; do
     fi
 done
 
-if [ -f "$INSTALLED_SCRIPT" ]; then
+if [ -f "$INSTALLED_SCRIPT" ] && [ ! -L "$INSTALLED_SCRIPT" ]; then
     rm -- "$INSTALLED_SCRIPT"
 fi
-if [ -d "$LIB_DIR" ]; then
-    rmdir "$LIB_DIR" 2>/dev/null || {
-        printf 'The install directory is not empty; left it in place: %s\n' "$LIB_DIR"
-    }
+rm -f "$MARKER"
+if ! rmdir "$LIB_DIR" 2>/dev/null; then
+    printf 'The install directory is not empty; left it in place: %s\n' "$LIB_DIR"
 fi
-
 printf '\nSleep, My Sweetie has been uninstalled. Goodbye! ❤️\n'
