@@ -1,7 +1,10 @@
-.PHONY: test install uninstall
+.PHONY: test lint install uninstall
 
 test:
-	sh tests/test-command.sh
+	python3 tests/test_suite.py
+
+lint:
+	shellcheck bin/sleep_my_sweetie install.sh uninstall.sh
 
 install:
 	sudo sh ./install.sh
