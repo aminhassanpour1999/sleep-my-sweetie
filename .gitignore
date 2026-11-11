@@ -1,0 +1,10 @@
+# Editor and operating-system files
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test and coverage artifacts
+.coverage
+.pytest_cache/
