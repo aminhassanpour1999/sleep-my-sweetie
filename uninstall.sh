@@ -25,19 +25,19 @@ MARKER="$LIB_DIR/.sleep-my-sweetie-managed"
 BIN_DIR="$PREFIX/bin"
 
 if [ -L "$PREFIX" ] || { [ -e "$PREFIX" ] && [ ! -d "$PREFIX" ]; }; then
-    printf 'Error: refusing unsafe PREFIX path: %s\\n' "$PREFIX" >&2
+    printf 'Error: refusing unsafe PREFIX path: %s\n' "$PREFIX" >&2
     exit 1
 fi
 if [ -L "$LIB_PARENT" ] || { [ -e "$LIB_PARENT" ] && [ ! -d "$LIB_PARENT" ]; }; then
-    printf 'Error: refusing unsafe library parent: %s\\n' "$LIB_PARENT" >&2
+    printf 'Error: refusing unsafe library parent: %s\n' "$LIB_PARENT" >&2
     exit 1
 fi
 if [ -L "$BIN_DIR" ] || { [ -e "$BIN_DIR" ] && [ ! -d "$BIN_DIR" ]; }; then
-    printf 'Error: refusing unsafe binary directory: %s\\n' "$BIN_DIR" >&2
+    printf 'Error: refusing unsafe binary directory: %s\n' "$BIN_DIR" >&2
     exit 1
 fi
 if [ -L "$LIB_DIR" ]; then
-    printf 'Error: refusing to follow a symbolic link at: %s\\n' "$LIB_DIR" >&2
+    printf 'Error: refusing to follow a symbolic link at: %s\n' "$LIB_DIR" >&2
     exit 1
 fi
 ALIASES='
