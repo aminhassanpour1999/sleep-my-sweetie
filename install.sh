@@ -23,7 +23,7 @@ if [ "$PREFIX" = "/" ]; then
     exit 1
 fi
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 SOURCE_SCRIPT="$SCRIPT_DIR/bin/sleep_my_sweetie"
 LIB_PARENT="$PREFIX/lib"
 LIB_DIR="$LIB_PARENT/sleep-my-sweetie"
