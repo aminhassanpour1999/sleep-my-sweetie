@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safe integration tests. A mock systemctl is used; no real shutdown occurs."""
+"""Safe integration tests. A mock shutdown command is used; no real shutdown occurs."""
 
 import os
 import pathlib
@@ -45,46 +45,46 @@ def test_help_and_arguments():
     assert extra.returncode == 2
 
 
-def test_dry_run_never_calls_poweroff():
+def test_dry_run_never_calls_shutdown():
     with tempfile.TemporaryDirectory() as directory:
         base = pathlib.Path(directory)
-        log = base / "systemctl.log"
-        mock = executable(base / "systemctl", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
+        log = base / "shutdown.log"
+        mock = executable(base / "shutdown", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
         env = os.environ.copy()
-        env.update({"SLEEP_MY_SWEETIE_SYSTEMCTL": str(mock), "MOCK_LOG": str(log)})
+        env.update({"SLEEP_MY_SWEETIE_SHUTDOWN": str(mock), "MOCK_LOG": str(log)})
         result = run(["sh", str(COMMAND), "--dry-run"], env)
         assert "Dry run" in result.stdout
         assert not log.exists()
 
 
-def test_normal_flow_uses_mock_systemctl():
+def test_normal_flow_uses_mock_shutdown():
     with tempfile.TemporaryDirectory() as directory:
         base = pathlib.Path(directory)
-        log = base / "systemctl.log"
-        mock = executable(base / "systemctl", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
+        log = base / "shutdown.log"
+        mock = executable(base / "shutdown", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
         fake_sleep = executable(base / "sleep", "#!/bin/sh\nexit 0\n")
         env = os.environ.copy()
         env.update({
             "PATH": f"{base}:{env.get('PATH', '')}",
-            "SLEEP_MY_SWEETIE_SYSTEMCTL": str(mock),
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
             "SLEEP_MY_SWEETIE_TEST_MODE": "1",
             "MOCK_LOG": str(log),
         })
         result = run(["sh", str(COMMAND)], env)
         assert "Goodnight!" in result.stdout
-        assert log.read_text(encoding="utf-8").strip() == "poweroff"
+        assert log.read_text(encoding="utf-8").strip() == "--poweroff now"
 
 
 def test_ctrl_c_cancels_before_systemctl():
     with tempfile.TemporaryDirectory() as directory:
         base = pathlib.Path(directory)
-        log = base / "systemctl.log"
-        mock = executable(base / "systemctl", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
+        log = base / "shutdown.log"
+        mock = executable(base / "shutdown", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
         executable(base / "sleep", "#!/bin/sh\nexec /bin/sleep 2\n")
         env = os.environ.copy()
         env.update({
             "PATH": f"{base}:{env.get('PATH', '')}",
-            "SLEEP_MY_SWEETIE_SYSTEMCTL": str(mock),
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
             "SLEEP_MY_SWEETIE_TEST_MODE": "1",
             "MOCK_LOG": str(log),
         })
@@ -105,7 +105,7 @@ def test_ctrl_c_cancels_before_systemctl():
             tail, _ = process.communicate(timeout=5)
             output += tail
             assert process.returncode != 0, "SIGINT did not cancel the command"
-            assert not log.exists(), "systemctl ran after cancellation"
+            assert not log.exists(), "shutdown ran after cancellation"
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGKILL)
@@ -117,7 +117,7 @@ def test_install_reinstall_conflicts_and_uninstall():
         base = pathlib.Path(directory)
         prefix = base / "prefix"
         env = os.environ.copy()
-        env.update({"PREFIX": str(prefix), "SLEEP_MY_SWEETIE_SYSTEMCTL": "/bin/true"})
+        env.update({"PREFIX": str(prefix), "SLEEP_MY_SWEETIE_SHUTDOWN": "/bin/true"})
 
         run(["sh", str(INSTALLER)], env)
         installed = prefix / "lib/sleep-my-sweetie/sleep_my_sweetie"
@@ -163,8 +163,8 @@ def test_install_reinstall_conflicts_and_uninstall():
 def main():
     cases = (
         test_help_and_arguments,
-        test_dry_run_never_calls_poweroff,
-        test_normal_flow_uses_mock_systemctl,
+        test_dry_run_never_calls_shutdown,
+        test_normal_flow_uses_mock_shutdown,
         test_ctrl_c_cancels_before_systemctl,
         test_install_reinstall_conflicts_and_uninstall,
     )
