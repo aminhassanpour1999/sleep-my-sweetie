@@ -121,7 +121,7 @@ The file uses sh and stops on many unexpected errors or unset variables.
 
 The program derives PROGRAM_NAME from its script path. This value is used in the helpful sudo instruction.
 
-SHUTDOWN normally points to /usr/bin/shutdown. The environment override SLEEP_MY_SWEETIE_SHUTDOWN exists so automated tests can provide a harmless fake executable. It is not intended as a normal user configuration feature.
+SHUTDOWN normally points to /usr/sbin/shutdown. The environment override SLEEP_MY_SWEETIE_SHUTDOWN exists so automated tests can provide a harmless fake executable. It is not intended as a normal user configuration feature.
 
 ### 4.3 The help function
 
@@ -169,7 +169,7 @@ The dry-run branch prints what would happen and exits:
 
     if [ "$DRY_RUN" -eq 1 ]; then
         printf 'Dry run: no shutdown will be requested.\n'
-        printf 'Would execute: %s poweroff\n' "$SHUTDOWN"
+        printf 'Would execute: %s --poweroff now\n' "$SHUTDOWN"
         exit 0
     fi
 
@@ -229,11 +229,11 @@ The visible sequence is 5, 4, 3, 2, 1.
 
     trap - INT TERM
     printf 'Goodnight! ❤️\n'
-    exec "$SHUTDOWN" poweroff
+    exec "$SHUTDOWN" --poweroff now
 
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
-exec replaces the current shell process with shutdown. The `--poweroff now` arguments asks systemd to power off the machine.
+exec replaces the current shell process with shutdown. The `--poweroff now` arguments ask the standard shutdown utility to request a normal system power-off through systemd/logind.
 
 This is the real, potentially destructive operation. Save your work before running the command.
 
@@ -414,7 +414,7 @@ Creates a fake shutdown program that would write its arguments to a log. It runs
 
 **test_normal_flow_uses_mock_shutdown**
 
-Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded argument is poweroff.
+Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded arguments are `--poweroff now`.
 
 No actual system shutdown is requested.
 
@@ -526,7 +526,7 @@ You should now be able to explain:
 - What conditions, functions, loops, and exit codes do.
 - How the countdown works.
 - How signal traps handle Ctrl+C.
-- Why shutdown poweroff is the real shutdown operation.
+- Why the standard shutdown utility is used for the real power-off operation.
 - How an installer checks paths and creates symbolic links.
 - Why the ownership marker protects unrelated files.
 - How the uninstaller avoids recursive deletion.
