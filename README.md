@@ -2,178 +2,177 @@
 
 > A tiny, playful set of Linux shutdown commands with one job: say goodnight to your computer.
 
-Sleep, My Sweetie gives Ubuntu and other systemd-based Linux machines several memorable terminal commands. Every alias runs the same carefully maintained shutdown script.
+Sleep, My Sweetie provides eight memorable terminal commands for Ubuntu and other systemd-based Linux distributions. All command names point to one shared implementation.
 
-## Quick look
+## Quick start
 
-```bash
-sudo sleep_my_sweetie
-sudo goodnight_my_love
-sudo off_you_go
-sudo night_night
-sudo rest_in_peace
-sudo bye_bye_baby
-sudo shut_down_sweetheart
-sudo time_to_sleep
-```
+    git clone https://github.com/aminhassanpour1999/sleep-my-sweetie.git
+    cd sleep-my-sweetie
+    sudo sh ./install.sh
 
-The default message is:
+Then run any alias:
 
-```text
-Goodnight, my sweetie. ❤️
-You've worked hard today.
-Time to rest.
-```
+    sudo sleep_my_sweetie
+    sudo goodnight_my_love
+    sudo off_you_go
+    sudo night_night
+    sudo rest_in_peace
+    sudo bye_bye_baby
+    sudo shut_down_sweetheart
+    sudo time_to_sleep
 
-The command waits five seconds before requesting a system power-off. Press **Ctrl+C** during the countdown to cancel.
+The command displays a friendly message, counts down from five, and requests a system power-off. Press Ctrl+C during the countdown to cancel.
+
+## Safe preview
+
+    sh bin/sleep_my_sweetie --dry-run
+
+Dry-run mode does not require root and never calls systemctl.
 
 ## Features
 
-- Eight memorable command names and one shared implementation.
-- Visible, five-second cancellable countdown.
-- Uses the standard `systemctl poweroff` command.
-- No daemon, background service, network access, or automatic startup.
-- Installer and uninstaller scripts.
-- Refuses to overwrite unrelated files in `/usr/local/bin`.
-- Lightweight shell-based tests.
+- Eight command names with one canonical implementation.
+- Five-second visible countdown.
+- Ctrl+C and SIGTERM handling during the countdown.
+- Dry-run mode for safe preview.
+- Uses systemctl poweroff for the real shutdown request.
+- Installer and uninstaller with ownership-marker checks.
+- Refuses to overwrite unrelated command aliases or unmanaged install directories.
+- Safe integration tests using a mock systemctl and temporary directories.
+- GitHub Actions workflow for tests and ShellCheck.
 
 ## Requirements
 
 - Linux with systemd.
-- `/usr/bin/systemctl`.
-- POSIX-compatible `sh`.
-- Administrative privileges to install and power off the computer.
+- POSIX-compatible sh.
+- /usr/bin/systemctl for normal use.
+- Python 3 for the automated test suite.
+- ShellCheck for static analysis (optional locally; installed in GitHub Actions).
 
-This project is intended for Ubuntu and other systemd-based distributions. It is not designed for macOS, Windows, WSL without systemd power management, or non-systemd Linux distributions.
+The project is intended for Ubuntu and other systemd-based distributions. It is not designed for macOS, Windows, or non-systemd Linux distributions.
 
 ## Installation
 
-Clone the repository:
+    git clone https://github.com/aminhassanpour1999/sleep-my-sweetie.git
+    cd sleep-my-sweetie
+    sudo sh ./install.sh
 
-```bash
-git clone https://github.com/aminhassanpour1999/sleep-my-sweetie.git
-cd sleep-my-sweetie
-```
+The default installation locations are:
 
-Run the installer:
+- /usr/local/lib/sleep-my-sweetie/
+- /usr/local/bin/
 
-```bash
-sudo sh ./install.sh
-```
+The installer creates a managed-installation marker and checks for conflicts before creating aliases. It refuses to overwrite an unrelated file, symbolic link, or unmanaged project directory.
 
-Verify the installation:
+### Custom installation prefix
 
-```bash
-command -v sleep_my_sweetie
-ls -l /usr/local/bin/sleep_my_sweetie
-```
+For packaging and isolated testing, the installer supports an absolute PREFIX:
 
-The installer places the canonical executable in `/usr/local/lib/sleep-my-sweetie/` and creates symbolic links in `/usr/local/bin/`. It checks for conflicts and stops rather than overwriting unrelated paths.
+    PREFIX="$HOME/.local" sh ./install.sh
+
+This installs under the selected prefix. A custom prefix does not automatically add its bin directory to your PATH.
 
 ## Usage
 
-Run any alias with `sudo`:
+Run an installed alias with sudo:
 
-```bash
-sudo sleep_my_sweetie
-```
+    sudo sleep_my_sweetie
 
-The script prints the goodnight message, counts down from five, and then executes:
+The program runs /usr/bin/systemctl poweroff only after the countdown finishes. Save your work before running it.
 
-```bash
-/usr/bin/systemctl poweroff
-```
+### Dry run
 
-Administrative privileges are required for the intended system-wide power-off operation.
+    sh bin/sleep_my_sweetie --dry-run
+
+This displays the planned action and exits without requesting shutdown.
+
+### Cancel
+
+Press Ctrl+C during the countdown. The script handles SIGINT and exits before calling systemctl.
 
 ## Available commands
 
 | Command | Meaning |
-| --- | --- |
-| `sleep_my_sweetie` | Sleep, my sweetie |
-| `goodnight_my_love` | Goodnight, my love |
-| `off_you_go` | Off you go |
-| `night_night` | Night-night |
-| `rest_in_peace` | Rest in peace (dark humor) |
-| `bye_bye_baby` | Bye-bye, baby |
-| `shut_down_sweetheart` | Shut down, sweetheart |
-| `time_to_sleep` | Time to sleep |
+|---|---|
+| sleep_my_sweetie | Sleep, my sweetie |
+| goodnight_my_love | Goodnight, my love |
+| off_you_go | Off you go |
+| night_night | Night-night |
+| rest_in_peace | Rest in peace (dark humor) |
+| bye_bye_baby | Bye-bye, baby |
+| shut_down_sweetheart | Shut down, sweetheart |
+| time_to_sleep | Time to sleep |
 
-All aliases point to the same executable. They are not separate implementations.
-
-## Cancel the countdown
-
-Press **Ctrl+C** while the five-second countdown is running. The script will stop before requesting shutdown. Once systemd has accepted the power-off request, cancellation may no longer be possible.
+All aliases are symbolic links to the same executable.
 
 ## Uninstallation
 
-From the cloned project directory:
+    sudo sh ./uninstall.sh
 
-```bash
-sudo sh ./uninstall.sh
-```
+The uninstaller checks the ownership marker and removes only symbolic links that point to this project's installed executable. It does not recursively delete the installation directory. If unexpected files remain, the directory is left untouched.
 
-The uninstaller removes only symlinks that point to this project's installed executable, then removes the executable and its empty private directory. Unrelated files and commands are left untouched.
+For a custom prefix, use the same PREFIX value:
+
+    PREFIX="$HOME/.local" sh ./uninstall.sh
+
+## Tests
+
+Run the safe integration tests:
+
+    make test
+
+The test suite uses a mock systemctl executable and temporary installation prefixes. It checks help output, argument validation, dry-run behavior, normal command flow, Ctrl+C cancellation, installation, reinstall, conflicts, and uninstallation.
+
+**The tests never invoke the real system power-off command.**
+
+## Static analysis
+
+Install ShellCheck using your distribution's package manager, then run:
+
+    make lint
+
+ShellCheck reviews the shell scripts for common mistakes. It is not proof that the program is bug-free.
+
+## Continuous integration
+
+GitHub Actions runs the test suite and ShellCheck on pushes, pull requests, and manual workflow dispatches. See the Actions tab in the repository for results.
 
 ## Project structure
 
-```text
-sleep-my-sweetie/
-├── bin/
-│   └── sleep_my_sweetie
-├── tests/
-│   └── test-command.sh
-├── .editorconfig
-├── .gitignore
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── Makefile
-├── README.md
-├── SECURITY.md
-├── install.sh
-└── uninstall.sh
-```
+    sleep-my-sweetie/
+    ├── .github/
+    │   └── workflows/
+    │       └── ci.yml
+    ├── bin/
+    │   └── sleep_my_sweetie
+    ├── tests/
+    │   └── test_suite.py
+    ├── .editorconfig
+    ├── .gitignore
+    ├── CHANGELOG.md
+    ├── CODE_WALKTHROUGH.md
+    ├── CONTRIBUTING.md
+    ├── LICENSE
+    ├── Makefile
+    ├── README.md
+    ├── SECURITY.md
+    └── uninstall.sh
 
-## Safety
+## Learn the code
 
-**This program really powers off your computer.**
-
-- Save your work before running any shutdown alias.
-- The countdown is only a brief chance to cancel; it is not a substitute for saving files.
-- Inspect scripts before running them with administrative privileges.
-- The project does not schedule shutdowns or run automatically at startup.
-- The installer deliberately refuses to replace existing unrelated commands.
-
-## Tests and development
-
-Run the test suite:
-
-```bash
-make test
-```
-
-The tests check help output and the expected power-off invocation. They do **not** perform a real shutdown.
-
-Optional static analysis:
-
-```bash
-shellcheck bin/sleep_my_sweetie install.sh uninstall.sh tests/test-command.sh
-```
-
-ShellCheck is optional and is not installed automatically.
+New to shell scripting? Start with [CODE_WALKTHROUGH.md](CODE_WALKTHROUGH.md). It explains the project structure, shell basics, the main command, installation, uninstallation, tests, and GitHub Actions.
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for the security policy and safe-use notes.
+Read [SECURITY.md](SECURITY.md) before using the program or reporting a vulnerability.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for release history.
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
