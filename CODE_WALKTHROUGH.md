@@ -369,6 +369,79 @@ Or run the test file directly:
 
 The expected final message reports that all test groups passed and no real shutdown was performed.
 
+### 7.5 Python imports and shared paths
+
+The test file imports only Python standard-library modules:
+
+- os reads and modifies environment variables and sends signals.
+- pathlib builds filesystem paths safely.
+- signal provides signal names such as SIGINT and SIGKILL.
+- subprocess starts programs and captures their output.
+- tempfile creates temporary directories that are automatically cleaned up.
+- time measures deadlines while waiting for the countdown to begin.
+
+ROOT is calculated from the location of the test file. The other path constants point to the command, installer, and uninstaller. ALIASES is a tuple containing the eight expected command names.
+
+Using pathlib instead of manually joining strings makes path handling clearer across operating systems.
+
+### 7.6 The run helper
+
+The run helper wraps subprocess.run. It:
+
+1. Starts a command from the repository root.
+2. Passes an optional environment dictionary.
+3. Captures standard output and standard error together.
+4. Returns the process result.
+5. Raises an assertion with the captured output when check is enabled and the command fails.
+
+This keeps each test shorter and makes failures easier to understand.
+
+### 7.7 The executable helper
+
+The executable helper writes text to a temporary file and changes its permissions to 0755.
+
+The tests use it to create mock programs such as systemctl and sleep. These mock programs are small controlled substitutes for real operating-system commands.
+
+### 7.8 What each test verifies
+
+**test_help_and_arguments**
+
+Runs the main script with --help and checks for important help text. It then supplies an unknown option and too many arguments, expecting exit status 2.
+
+**test_dry_run_never_calls_poweroff**
+
+Creates a fake systemctl program that would write its arguments to a log. It runs dry-run mode and verifies that the log was never created. This proves the dry-run branch exits before systemctl.
+
+**test_normal_flow_uses_mock_systemctl**
+
+Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake systemctl command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded argument is poweroff.
+
+No actual system shutdown is requested.
+
+**test_ctrl_c_cancels_before_systemctl**
+
+Creates a fake sleep command that waits long enough for the test to interrupt the process. The test starts the shell script in a new process session, waits until the first countdown number appears, and sends SIGINT to the process group.
+
+It then verifies that the process stops and that the fake systemctl log was never created. The process-group approach sends the interrupt to the shell and its waiting child process, similar to how a terminal delivers Ctrl+C to a foreground command group.
+
+**test_install_reinstall_conflicts_and_uninstall**
+
+Creates a temporary PREFIX and runs the real installer against that isolated location.
+
+It checks that the canonical executable, ownership marker, and eight symbolic links are created. It runs the installer a second time to verify repeatability.
+
+Next, it creates an unrelated file using one of the alias names and verifies that the installer refuses to overwrite it. It also creates an unmanaged project directory and verifies that its contents are preserved.
+
+Finally, it runs the uninstaller and checks that project-owned links and files are removed while an unrelated command remains.
+
+### 7.9 The test runner
+
+The main function stores the test functions in a tuple and calls them one by one. After each successful test, it prints a PASS line. If an assertion fails, Python stops and reports the failure.
+
+The final message is printed only after every test group succeeds.
+
+The tests are integration tests: they check how several parts of the project work together. They are not a substitute for testing on every supported Linux distribution.
+
 ## 8. Makefile
 
 The Makefile provides short commands:
