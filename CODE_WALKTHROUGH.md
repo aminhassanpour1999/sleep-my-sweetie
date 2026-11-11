@@ -2,7 +2,7 @@
 
 This guide explains the project from the ground up. Read it beside the source files. The goal is to understand the decisions behind the code, not merely copy commands.
 
-> Safety: this project can power off a real computer. Automated tests use a harmless mock systemctl executable and temporary directories. Never replace the mock with the real shutdown command during testing.
+> Safety: this project can power off a real computer. Automated tests use a harmless mock shutdown executable and temporary directories. Never replace the mock with the real shutdown command during testing.
 
 ## 1. What does the project do?
 
@@ -117,11 +117,11 @@ This is the only file that requests a power-off.
 
 The file uses sh and stops on many unexpected errors or unset variables.
 
-### 4.2 Program name and systemctl path
+### 4.2 Program name and shutdown path
 
 The program derives PROGRAM_NAME from its script path. This value is used in the helpful sudo instruction.
 
-SYSTEMCTL normally points to /usr/bin/systemctl. The environment override SLEEP_MY_SWEETIE_SYSTEMCTL exists so automated tests can provide a harmless fake executable. It is not intended as a normal user configuration feature.
+SHUTDOWN normally points to /usr/bin/shutdown. The environment override SLEEP_MY_SWEETIE_SHUTDOWN exists so automated tests can provide a harmless fake executable. It is not intended as a normal user configuration feature.
 
 ### 4.3 The help function
 
@@ -169,11 +169,11 @@ The dry-run branch prints what would happen and exits:
 
     if [ "$DRY_RUN" -eq 1 ]; then
         printf 'Dry run: no shutdown will be requested.\n'
-        printf 'Would execute: %s poweroff\n' "$SYSTEMCTL"
+        printf 'Would execute: %s poweroff\n' "$SHUTDOWN"
         exit 0
     fi
 
-The exit command stops the script. It never reaches the countdown or systemctl.
+The exit command stops the script. It never reaches the countdown or shutdown.
 
 ### 4.7 Check administrative privileges
 
@@ -183,15 +183,15 @@ The exit command stops the script. It never reaches the countdown or systemctl.
 
 id -u prints the numeric user ID of the current process. On Linux, user ID 0 is root.
 
-The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with a fake systemctl executable. Do not set test mode for normal use.
+The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with a fake shutdown executable. Do not set test mode for normal use.
 
-### 4.8 Check systemctl
+### 4.8 Check shutdown
 
-    if [ ! -x "$SYSTEMCTL" ]; then
+    if [ ! -x "$SHUTDOWN" ]; then
         ...
     fi
 
-The -x test checks whether the path exists and is executable. If systemctl cannot be found, the script stops before beginning the countdown.
+The -x test checks whether the path exists and is executable. If shutdown cannot be found, the script stops before beginning the countdown.
 
 ### 4.9 Signals and Ctrl+C
 
@@ -206,7 +206,7 @@ A trap tells the shell to run a chosen function when it receives a signal.
 
 The SIGINT trap prints a cancellation message and exits with status 130. The SIGTERM trap prints an interruption message and exits with status 143.
 
-This prevents the script from continuing to systemctl after the user interrupts the countdown.
+This prevents the script from continuing to shutdown after the user interrupts the countdown.
 
 ### 4.10 The countdown loop
 
@@ -229,11 +229,11 @@ The visible sequence is 5, 4, 3, 2, 1.
 
     trap - INT TERM
     printf 'Goodnight! ❤️\n'
-    exec "$SYSTEMCTL" poweroff
+    exec "$SHUTDOWN" poweroff
 
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
-exec replaces the current shell process with systemctl. The poweroff argument asks systemd to power off the machine.
+exec replaces the current shell process with shutdown. The `--poweroff now` arguments asks systemd to power off the machine.
 
 This is the real, potentially destructive operation. Save your work before running the command.
 
@@ -327,11 +327,11 @@ If other files remain, rmdir fails and the directory is left in place. This is i
 
 The test suite uses Python's standard library. It does not require third-party Python packages.
 
-### 7.1 Why mock systemctl?
+### 7.1 Why mock shutdown?
 
 A test must never accidentally power off the developer's computer or a CI machine.
 
-The tests create a temporary executable named systemctl. It only writes its arguments to a log file. The main script is told to use this mock through SLEEP_MY_SWEETIE_SYSTEMCTL.
+The tests create a temporary executable named shutdown. It only writes its arguments to a log file. The main script is told to use this mock through SLEEP_MY_SWEETIE_SHUTDOWN.
 
 When the command reaches the power-off step during a test, the fake executable records the word poweroff instead of powering off the machine.
 
@@ -346,9 +346,9 @@ The installer tests set PREFIX to a folder inside this temporary directory. They
 The suite checks:
 
 1. Help text and invalid argument handling.
-2. Dry-run mode does not call systemctl.
-3. Normal execution reaches the mock systemctl with the poweroff argument.
-4. SIGINT during the countdown prevents systemctl from running.
+2. Dry-run mode does not call shutdown.
+3. Normal execution reaches the mock shutdown with the `--poweroff now` arguments.
+4. SIGINT during the countdown prevents shutdown from running.
 5. Installation creates the executable and all aliases.
 6. Reinstallation is idempotent.
 7. Alias conflicts do not overwrite unrelated files.
@@ -400,7 +400,7 @@ This keeps each test shorter and makes failures easier to understand.
 
 The executable helper writes text to a temporary file and changes its permissions to 0755.
 
-The tests use it to create mock programs such as systemctl and sleep. These mock programs are small controlled substitutes for real operating-system commands.
+The tests use it to create mock programs such as shutdown and sleep. These mock programs are small controlled substitutes for real operating-system commands.
 
 ### 7.8 What each test verifies
 
@@ -410,19 +410,19 @@ Runs the main script with --help and checks for important help text. It then sup
 
 **test_dry_run_never_calls_poweroff**
 
-Creates a fake systemctl program that would write its arguments to a log. It runs dry-run mode and verifies that the log was never created. This proves the dry-run branch exits before systemctl.
+Creates a fake shutdown program that would write its arguments to a log. It runs dry-run mode and verifies that the log was never created. This proves the dry-run branch exits before shutdown.
 
-**test_normal_flow_uses_mock_systemctl**
+**test_normal_flow_uses_mock_shutdown**
 
-Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake systemctl command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded argument is poweroff.
+Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded argument is poweroff.
 
 No actual system shutdown is requested.
 
-**test_ctrl_c_cancels_before_systemctl**
+**test_ctrl_c_cancels_before_shutdown**
 
 Creates a fake sleep command that waits long enough for the test to interrupt the process. The test starts the shell script in a new process session, waits until the first countdown number appears, and sends SIGINT to the process group.
 
-It then verifies that the process stops and that the fake systemctl log was never created. The process-group approach sends the interrupt to the shell and its waiting child process, similar to how a terminal delivers Ctrl+C to a foreground command group.
+It then verifies that the process stops and that the fake shutdown log was never created. The process-group approach sends the interrupt to the shell and its waiting child process, similar to how a terminal delivers Ctrl+C to a foreground command group.
 
 **test_install_reinstall_conflicts_and_uninstall**
 
@@ -526,7 +526,7 @@ You should now be able to explain:
 - What conditions, functions, loops, and exit codes do.
 - How the countdown works.
 - How signal traps handle Ctrl+C.
-- Why systemctl poweroff is the real shutdown operation.
+- Why shutdown poweroff is the real shutdown operation.
 - How an installer checks paths and creates symbolic links.
 - Why the ownership marker protects unrelated files.
 - How the uninstaller avoids recursive deletion.
