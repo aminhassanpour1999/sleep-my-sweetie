@@ -8,3 +8,12 @@ Thumbs.db
 # Test and coverage artifacts
 .coverage
 .pytest_cache/
+
+# Python development artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local logs
+*.log
