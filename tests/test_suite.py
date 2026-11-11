@@ -165,7 +165,7 @@ def main():
         test_help_and_arguments,
         test_dry_run_never_calls_shutdown,
         test_normal_flow_uses_mock_shutdown,
-        test_ctrl_c_cancels_before_systemctl,
+        test_ctrl_c_cancels_before_shutdown,
         test_install_reinstall_conflicts_and_uninstall,
     )
     for case in cases:
