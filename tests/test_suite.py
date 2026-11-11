@@ -75,7 +75,7 @@ def test_normal_flow_uses_mock_shutdown():
         assert log.read_text(encoding="utf-8").strip() == "--poweroff now"
 
 
-def test_ctrl_c_cancels_before_systemctl():
+def test_ctrl_c_cancels_before_shutdown():
     with tempfile.TemporaryDirectory() as directory:
         base = pathlib.Path(directory)
         log = base / "shutdown.log"
