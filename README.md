@@ -21,7 +21,7 @@ Then run any alias:
     sudo shut_down_sweetheart
     sudo time_to_sleep
 
-The command displays a friendly message, counts down from five, and requests a system power-off. Press Ctrl+C during the countdown to cancel.
+The command displays a friendly message, counts down from five, and requests a system power-off through the standard `shutdown --poweroff now` command. Press Ctrl+C during the countdown to cancel.
 
 ## Safe preview
 
@@ -35,7 +35,7 @@ Dry-run mode does not require root and never calls systemctl.
 - Five-second visible countdown.
 - Ctrl+C and SIGTERM handling during the countdown.
 - Dry-run mode for safe preview.
-- Uses systemctl poweroff for the real shutdown request.
+- Uses the standard shutdown command so systemd/logind can coordinate the normal shutdown sequence.
 - Installer and uninstaller with ownership-marker checks.
 - Refuses to overwrite unrelated command aliases or unmanaged install directories.
 - Safe integration tests using a mock systemctl and temporary directories.
@@ -78,7 +78,7 @@ Run an installed alias with sudo:
 
     sudo sleep_my_sweetie
 
-The program runs /usr/bin/systemctl poweroff only after the countdown finishes. Save your work before running it.
+The program runs `/usr/sbin/shutdown --poweroff now` only after the countdown finishes. This uses the standard system shutdown path rather than asking `systemctl` to perform an interactive inhibitor pre-check. Normal shutdown handling and service-stop ordering remain under systemd. Save your work before running it.
 
 ### Dry run
 
@@ -121,7 +121,7 @@ Run the safe integration tests:
 
     make test
 
-The test suite uses a mock systemctl executable and temporary installation prefixes. It checks help output, argument validation, dry-run behavior, normal command flow, Ctrl+C cancellation, installation, reinstall, conflicts, and uninstallation.
+The test suite uses a mock shutdown executable and temporary installation prefixes. It checks help output, argument validation, dry-run behavior, normal command flow, Ctrl+C cancellation, installation, reinstall, conflicts, and uninstallation.
 
 **The tests never invoke the real system power-off command.**
 
