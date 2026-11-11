@@ -4,7 +4,7 @@ test:
 	sh tests/test-command.sh
 
 install:
-	sudo ./install.sh
+	sudo sh ./install.sh
 
 uninstall:
-	sudo ./uninstall.sh
+	sudo sh ./uninstall.sh
