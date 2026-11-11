@@ -204,7 +204,7 @@ Ctrl+C normally sends SIGINT to the foreground process group. The script install
 
 A trap tells the shell to run a chosen function when it receives a signal.
 
-The cancellation function prints a message and exits with status 130. The termination function exits with status 143.
+The SIGINT trap prints a cancellation message and exits with status 130. The SIGTERM trap prints an interruption message and exits with status 143.
 
 This prevents the script from continuing to systemctl after the user interrupts the countdown.
 
@@ -302,7 +302,7 @@ For each name, ln -s creates a link to the one canonical executable. There is on
 
 ### 5.8 Cleanup trap
 
-The installer records the temporary filename and registers a cleanup function. If the script exits while the temporary file remains, the cleanup function removes it.
+The installer records the temporary filename and registers a cleanup trap. If the script exits while the temporary file remains, the trap removes it.
 
 This reduces leftover temporary files after an interrupted installation.
 
