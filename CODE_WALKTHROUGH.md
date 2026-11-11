@@ -333,7 +333,7 @@ A test must never accidentally power off the developer's computer or a CI machin
 
 The tests create a temporary executable named shutdown. It only writes its arguments to a log file. The main script is told to use this mock through SLEEP_MY_SWEETIE_SHUTDOWN.
 
-When the command reaches the power-off step during a test, the fake executable records the word poweroff instead of powering off the machine.
+When the command reaches the power-off step during a test, the fake executable records `--poweroff now` instead of powering off the machine.
 
 ### 7.2 Temporary directories
 
@@ -408,7 +408,7 @@ The tests use it to create mock programs such as shutdown and sleep. These mock 
 
 Runs the main script with --help and checks for important help text. It then supplies an unknown option and too many arguments, expecting exit status 2.
 
-**test_dry_run_never_calls_poweroff**
+**test_dry_run_never_calls_shutdown**
 
 Creates a fake shutdown program that would write its arguments to a log. It runs dry-run mode and verifies that the log was never created. This proves the dry-run branch exits before shutdown.
 
