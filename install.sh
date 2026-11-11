@@ -25,7 +25,8 @@ fi
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SOURCE_SCRIPT="$SCRIPT_DIR/bin/sleep_my_sweetie"
-LIB_DIR="$PREFIX/lib/sleep-my-sweetie"
+LIB_PARENT="$PREFIX/lib"
+LIB_DIR="$LIB_PARENT/sleep-my-sweetie"
 INSTALLED_SCRIPT="$LIB_DIR/sleep_my_sweetie"
 MARKER="$LIB_DIR/.sleep-my-sweetie-managed"
 BIN_DIR="$PREFIX/bin"
@@ -46,6 +47,10 @@ time_to_sleep
 
 if [ -L "$PREFIX" ] || { [ -e "$PREFIX" ] && [ ! -d "$PREFIX" ]; }; then
     printf 'Error: PREFIX must be a real directory: %s\n' "$PREFIX" >&2
+    exit 1
+fi
+if [ -L "$LIB_PARENT" ] || { [ -e "$LIB_PARENT" ] && [ ! -d "$LIB_PARENT" ]; }; then
+    printf 'Error: refusing to use a non-directory or symbolic link: %s\\n' "$LIB_PARENT" >&2
     exit 1
 fi
 if [ -L "$LIB_DIR" ] || { [ -e "$LIB_DIR" ] && [ ! -d "$LIB_DIR" ]; }; then
@@ -89,7 +94,8 @@ TEMP_SCRIPT="$LIB_DIR/.sleep_my_sweetie.tmp.$$"
 cleanup() {
     [ ! -f "$TEMP_SCRIPT" ] || rm -f "$TEMP_SCRIPT"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 install -m 0755 "$SOURCE_SCRIPT" "$TEMP_SCRIPT"
 mv -f "$TEMP_SCRIPT" "$INSTALLED_SCRIPT"
 printf '%s\n' "$MARKER_TEXT" > "$MARKER"
@@ -101,7 +107,8 @@ for name in $ALIASES; do
         ln -s "$INSTALLED_SCRIPT" "$target"
     fi
 done
-trap - EXIT HUP INT TERM
+trap - EXIT
+trap - HUP INT TERM
 
 printf '\nSleep, My Sweetie has been installed successfully. ❤️\n'
 printf '\nAvailable commands:\n'
