@@ -1,11 +1,8 @@
 #!/bin/sh
-#
-# Sleep, My Sweetie
-# A playful, cancellable five-second countdown before powering off a systemd host.
-#
+# Sleep, My Sweetie — safe, cancellable systemd power-off command.
 set -eu
-
 PROGRAM_NAME=${0##*/}
+SYSTEMCTL=${SLEEP_MY_SWEETIE_SYSTEMCTL:-/usr/bin/systemctl}
 
 show_help() {
     cat <<'HELP'
@@ -23,21 +20,14 @@ Usage:
 
 Options:
   -h, --help    Show this help message and exit
+  --dry-run     Show what would happen without powering off
 
-The command displays a five-second countdown and then powers off the
-computer using systemctl. Press Ctrl+C during the countdown to cancel.
+The command displays a five-second countdown and then requests a system
+power-off using systemctl. Press Ctrl+C during the countdown to cancel.
+
+SLEEP_MY_SWEETIE_SYSTEMCTL is intended for automated tests only.
 HELP
 }
-
-case "${1-}" in
-    -h|--help) show_help; exit 0 ;;
-    "") ;;
-    *)
-        printf 'Error: unknown argument: %s\n\n' "$1" >&2
-        show_help >&2
-        exit 2
-        ;;
-esac
 
 if [ "$#" -gt 1 ]; then
     printf 'Error: too many arguments.\n\n' >&2
@@ -45,22 +35,50 @@ if [ "$#" -gt 1 ]; then
     exit 2
 fi
 
-if [ "$(id -u)" -ne 0 ]; then
-    printf 'Please run this command with sudo:\n  sudo %s\n' "$PROGRAM_NAME" >&2
-    exit 1
-fi
-
-SYSTEMCTL=/usr/bin/systemctl
-if [ ! -x "$SYSTEMCTL" ]; then
-    printf 'Error: %s is not available. This system needs systemd.\n' "$SYSTEMCTL" >&2
-    exit 1
-fi
+case "${1-}" in
+    -h|--help) show_help; exit 0 ;;
+    --dry-run) DRY_RUN=1 ;;
+    "") DRY_RUN=0 ;;
+    *)
+        printf 'Error: unknown argument: %s\n\n' "$1" >&2
+        show_help >&2
+        exit 2
+        ;;
+esac
 
 printf '\nGoodnight, my sweetie. ❤️\n'
 printf "You've worked hard today.\n"
 printf 'Time to rest.\n\n'
-printf 'Powering off in 5 seconds. Press Ctrl+C to cancel.\n'
 
+if [ "$DRY_RUN" -eq 1 ]; then
+    printf 'Dry run: no shutdown will be requested.\n'
+    printf 'Would execute: %s poweroff\n' "$SYSTEMCTL"
+    exit 0
+fi
+
+# This test-only switch is used with a harmless mock systemctl in CI.
+if [ "$(id -u)" -ne 0 ] && [ "${SLEEP_MY_SWEETIE_TEST_MODE:-0}" != 1 ]; then
+    printf 'Please run this command with sudo:\n  sudo %s\n' "$PROGRAM_NAME" >&2
+    exit 1
+fi
+
+if [ ! -x "$SYSTEMCTL" ]; then
+    printf 'Error: systemctl executable not found: %s\n' "$SYSTEMCTL" >&2
+    exit 1
+fi
+
+cancel_shutdown() {
+    printf '\nShutdown cancelled. Your computer will stay on.\n' >&2
+    exit 130
+}
+terminate_shutdown() {
+    printf '\nShutdown interrupted by a termination signal.\n' >&2
+    exit 143
+}
+trap 'cancel_shutdown' INT
+trap 'terminate_shutdown' TERM
+
+printf 'Powering off in 5 seconds. Press Ctrl+C to cancel.\n'
 remaining=5
 while [ "$remaining" -gt 0 ]; do
     printf '  %s...\n' "$remaining"
@@ -68,5 +86,6 @@ while [ "$remaining" -gt 0 ]; do
     remaining=$((remaining - 1))
 done
 
+trap - INT TERM
 printf 'Goodnight! ❤️\n'
 exec "$SYSTEMCTL" poweroff
