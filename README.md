@@ -27,7 +27,7 @@ The command displays a friendly message, counts down from five, and requests a s
 
     sh bin/sleep_my_sweetie --dry-run
 
-Dry-run mode does not require root and never calls systemctl.
+Dry-run mode does not require root and never calls the shutdown command.
 
 ## Features
 
@@ -38,14 +38,14 @@ Dry-run mode does not require root and never calls systemctl.
 - Uses the standard shutdown command so systemd/logind can coordinate the normal shutdown sequence.
 - Installer and uninstaller with ownership-marker checks.
 - Refuses to overwrite unrelated command aliases or unmanaged install directories.
-- Safe integration tests using a mock systemctl and temporary directories.
+- Safe integration tests using a mock shutdown command and temporary directories.
 - GitHub Actions workflow for tests and ShellCheck.
 
 ## Requirements
 
 - Linux with systemd.
 - POSIX-compatible sh.
-- /usr/bin/systemctl for normal use.
+- /usr/sbin/shutdown for normal use.
 - Python 3 for the automated test suite.
 - ShellCheck for static analysis (optional locally; installed in GitHub Actions).
 
@@ -88,7 +88,7 @@ This displays the planned action and exits without requesting shutdown.
 
 ### Cancel
 
-Press Ctrl+C during the countdown. The script handles SIGINT and exits before calling systemctl.
+Press Ctrl+C during the countdown. The script handles SIGINT and exits before calling the shutdown command.
 
 ## Available commands
 
