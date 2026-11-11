@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# Sleep, My Sweetie
+# A playful, cancellable five-second countdown before powering off a systemd host.
+#
+set -eu
+
+PROGRAM_NAME=${0##*/}
+
+show_help() {
+    cat <<'HELP'
+Sleep, My Sweetie
+
+Usage:
+  sudo sleep_my_sweetie
+  sudo goodnight_my_love
+  sudo off_you_go
+  sudo night_night
+  sudo rest_in_peace
+  sudo bye_bye_baby
+  sudo shut_down_sweetheart
+  sudo time_to_sleep
+
+Options:
+  -h, --help    Show this help message and exit
+
+The command displays a five-second countdown and then powers off the
+computer using systemctl. Press Ctrl+C during the countdown to cancel.
+HELP
+}
+
+case "${1-}" in
+    -h|--help) show_help; exit 0 ;;
+    "") ;;
+    *)
+        printf 'Error: unknown argument: %s\n\n' "$1" >&2
+        show_help >&2
+        exit 2
+        ;;
+esac
+
+if [ "$#" -gt 1 ]; then
+    printf 'Error: too many arguments.\n\n' >&2
+    show_help >&2
+    exit 2
+fi
+
+if [ "$(id -u)" -ne 0 ]; then
+    printf 'Please run this command with sudo:\n  sudo %s\n' "$PROGRAM_NAME" >&2
+    exit 1
+fi
+
+SYSTEMCTL=/usr/bin/systemctl
+if [ ! -x "$SYSTEMCTL" ]; then
+    printf 'Error: %s is not available. This system needs systemd.\n' "$SYSTEMCTL" >&2
+    exit 1
+fi
+
+printf '\nGoodnight, my sweetie. ❤️\n'
+printf "You've worked hard today.\n"
+printf 'Time to rest.\n\n'
+printf 'Powering off in 5 seconds. Press Ctrl+C to cancel.\n'
+
+remaining=5
+while [ "$remaining" -gt 0 ]; do
+    printf '  %s...\n' "$remaining"
+    sleep 1
+    remaining=$((remaining - 1))
+done
+
+printf 'Goodnight! ❤️\n'
+exec "$SYSTEMCTL" poweroff
