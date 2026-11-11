@@ -58,7 +58,7 @@ cd sleep-my-sweetie
 Run the installer:
 
 ```bash
-sudo ./install.sh
+sudo sh ./install.sh
 ```
 
 Verify the installation:
@@ -110,7 +110,7 @@ Press **Ctrl+C** while the five-second countdown is running. The script will sto
 From the cloned project directory:
 
 ```bash
-sudo ./uninstall.sh
+sudo sh ./uninstall.sh
 ```
 
 The uninstaller removes only symlinks that point to this project's installed executable, then removes the executable and its empty private directory. Unrelated files and commands are left untouched.
