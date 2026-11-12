@@ -1,6 +1,7 @@
 #!/bin/sh
 # Sleep, My Sweetie — safe, cancellable systemd power-off command.
 set -eu
+VERSION=1.1.4
 PROGRAM_NAME=${0##*/}
 SHUTDOWN=${SLEEP_MY_SWEETIE_SHUTDOWN:-/usr/sbin/shutdown}
 GNOME_SESSION_QUIT=${SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT:-/usr/bin/gnome-session-quit}
@@ -23,6 +24,7 @@ Usage:
 
 Options:
   -h, --help    Show this help message and exit
+  -V, --version Show the program version and exit
   --dry-run     Show what would happen without powering off
 
 The command displays a five-second countdown. In an active GNOME desktop
@@ -43,6 +45,7 @@ fi
 
 case "${1-}" in
     -h|--help) show_help; exit 0 ;;
+    -V|--version) printf 'Sleep, My Sweetie %s\n' "$VERSION"; exit 0 ;;
     --dry-run) DRY_RUN=1 ;;
     "") DRY_RUN=0 ;;
     *)
