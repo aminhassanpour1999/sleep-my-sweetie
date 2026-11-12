@@ -40,15 +40,73 @@ def test_help_and_arguments():
     help_result = run(["sh", str(COMMAND), "--help"])
     assert "Usage:" in help_result.stdout
     assert "--dry-run" in help_result.stdout
+    assert "--doctor" in help_result.stdout
     assert "goodnight_my_love" in help_result.stdout
     long_version = run(["sh", str(COMMAND), "--version"])
     short_version = run(["sh", str(COMMAND), "-V"])
     assert long_version.stdout.strip() == "Sleep, My Sweetie 1.1.4"
     assert short_version.stdout.strip() == long_version.stdout.strip()
+    assert long_version.stdout.strip() == "Sleep, My Sweetie 1.2.0"
     invalid = run(["sh", str(COMMAND), "--invalid"], check=False)
     assert invalid.returncode == 2
     extra = run(["sh", str(COMMAND), "--dry-run", "extra"], check=False)
     assert extra.returncode == 2
+
+
+
+def test_version_matches_changelog():
+    source = COMMAND.read_text(encoding="utf-8")
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    version = next(
+        line.split("=", 1)[1]
+        for line in source.splitlines()
+        if line.startswith("VERSION=")
+    )
+    assert f"## [{version}] -" in changelog
+
+
+def test_doctor_uses_gnome_route_without_requesting_poweroff():
+    with tempfile.TemporaryDirectory() as directory:
+        base = pathlib.Path(directory)
+        runtime = base / "runtime"
+        runtime.mkdir()
+        bus_path = runtime / "bus"
+        with socket.socket(socket.AF_UNIX) as bus:
+            bus.bind(str(bus_path))
+        gnome_mock = executable(base / "gnome-session-quit", "#!/bin/sh\\nexit 0\\n")
+        shutdown_mock = executable(base / "shutdown", "#!/bin/sh\\nexit 99\\n")
+        env = os.environ.copy()
+        env.update({
+            "SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT": str(gnome_mock),
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(shutdown_mock),
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(runtime),
+            "SUDO_USER": getpass.getuser(),
+        })
+        result = run(["sh", str(COMMAND), "--doctor"], env)
+        assert "Selected power-off route: GNOME confirmation dialog" in result.stdout
+        assert "No power-off request was made." in result.stdout
+
+
+def test_doctor_uses_shutdown_fallback_without_requesting_poweroff():
+    with tempfile.TemporaryDirectory() as directory:
+        base = pathlib.Path(directory)
+        no_bus = base / "no-bus"
+        no_bus.mkdir()
+        log = base / "shutdown.log"
+        shutdown_mock = executable(
+            base / "shutdown",
+            '#!/bin/sh\\nprintf "%s\\\\n" "$*" >> "$MOCK_LOG"\\n',
+        )
+        env = os.environ.copy()
+        env.update({
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(shutdown_mock),
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(no_bus),
+            "MOCK_LOG": str(log),
+        })
+        result = run(["sh", str(COMMAND), "--doctor"], env)
+        assert "Selected power-off route: standard shutdown command (-h now)" in result.stdout
+        assert "No power-off request was made." in result.stdout
+        assert not log.exists()
 
 
 def test_dry_run_never_calls_shutdown():
@@ -188,6 +246,7 @@ def test_install_reinstall_conflicts_and_uninstall():
         env = os.environ.copy()
         env.update({"PREFIX": str(prefix), "SLEEP_MY_SWEETIE_SHUTDOWN": "/bin/true"})
 
+        env["SLEEP_MY_SWEETIE_SYSTEMCTL"] = str(base / "missing-systemctl")
         run(["sh", str(INSTALLER)], env)
         installed = prefix / "lib/sleep-my-sweetie/sleep_my_sweetie"
         marker = prefix / "lib/sleep-my-sweetie/.sleep-my-sweetie-managed"
@@ -232,6 +291,9 @@ def test_install_reinstall_conflicts_and_uninstall():
 def main():
     cases = (
         test_help_and_arguments,
+        test_version_matches_changelog,
+        test_doctor_uses_gnome_route_without_requesting_poweroff,
+        test_doctor_uses_shutdown_fallback_without_requesting_poweroff,
         test_dry_run_never_calls_shutdown,
         test_normal_flow_uses_mock_shutdown,
         test_gnome_session_poweroff_uses_desktop_user_bus,
