@@ -29,12 +29,20 @@ The command displays a friendly message and counts down from five. In an active 
 
 Dry-run mode does not require root and never calls the shutdown command.
 
+## Version
+
+Display the installed program version without starting the countdown:
+
+    sleep_my_sweetie --version
+    sleep_my_sweetie -V
+
 ## Features
 
 - Eight command names with one canonical implementation.
 - Five-second visible countdown.
 - Ctrl+C and SIGTERM handling during the countdown.
 - Dry-run mode for safe preview.
+- `--version` and `-V` options to display the program version.
 - Uses GNOME's standard power-off confirmation when launched with `sudo` from an active GNOME desktop session.
 - Uses the standard `shutdown -h now` command when no active GNOME session bus is available.
 - Installer and uninstaller with ownership-marker checks.
