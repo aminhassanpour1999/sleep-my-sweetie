@@ -72,7 +72,11 @@ def test_doctor_uses_gnome_route_without_requesting_poweroff():
         bus_path = runtime / "bus"
         with socket.socket(socket.AF_UNIX) as bus:
             bus.bind(str(bus_path))
-        gnome_mock = executable(base / "gnome-session-quit", "#!/bin/sh\nexit 0\n")
+        gnome_log = base / "gnome.log"
+        gnome_mock = executable(
+            base / "gnome-session-quit",
+            '#!/bin/sh\nprintf "called\\n" >> "$GNOME_LOG"\n',
+        )
         shutdown_mock = executable(base / "shutdown", "#!/bin/sh\nexit 99\n")
         env = os.environ.copy()
         env.update({
@@ -80,10 +84,12 @@ def test_doctor_uses_gnome_route_without_requesting_poweroff():
             "SLEEP_MY_SWEETIE_SHUTDOWN": str(shutdown_mock),
             "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(runtime),
             "SUDO_USER": getpass.getuser(),
+            "GNOME_LOG": str(gnome_log),
         })
         result = run(["sh", str(COMMAND), "--doctor"], env)
         assert "Selected power-off route: GNOME confirmation dialog" in result.stdout
         assert "No power-off request was made." in result.stdout
+        assert not gnome_log.exists(), "doctor must not invoke gnome-session-quit"
 
 
 def test_doctor_uses_shutdown_fallback_without_requesting_poweroff():
@@ -106,6 +112,22 @@ def test_doctor_uses_shutdown_fallback_without_requesting_poweroff():
         assert "Selected power-off route: standard shutdown command (-h now)" in result.stdout
         assert "No power-off request was made." in result.stdout
         assert not log.exists()
+
+
+def test_doctor_fails_when_no_poweroff_route_is_available():
+    with tempfile.TemporaryDirectory() as directory:
+        base = pathlib.Path(directory)
+        no_bus = base / "no-bus"
+        no_bus.mkdir()
+        env = os.environ.copy()
+        env.update({
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(base / "missing-shutdown"),
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(no_bus),
+        })
+        result = run(["sh", str(COMMAND), "--doctor"], env, check=False)
+        assert result.returncode == 1
+        assert "Shutdown command is missing or not executable" in result.stdout
+        assert "No power-off request was made." in result.stdout
 
 
 def test_dry_run_never_calls_shutdown():
@@ -293,6 +315,7 @@ def main():
         test_version_matches_changelog,
         test_doctor_uses_gnome_route_without_requesting_poweroff,
         test_doctor_uses_shutdown_fallback_without_requesting_poweroff,
+        test_doctor_fails_when_no_poweroff_route_is_available,
         test_dry_run_never_calls_shutdown,
         test_normal_flow_uses_mock_shutdown,
         test_gnome_session_poweroff_uses_desktop_user_bus,
