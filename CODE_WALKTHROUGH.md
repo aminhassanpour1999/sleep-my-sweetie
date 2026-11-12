@@ -177,13 +177,13 @@ The exit command stops the script. It never reaches the countdown or shutdown.
 
 ### 4.7 Check administrative privileges
 
-    if [ "$(id -u)" -ne 0 ] && [ "$SLEEP_MY_SWEETIE_TEST_MODE" != 1 ]; then
+    if [ "$(id -u)" -ne 0 ] && [ "$TEST_MODE" != 1 ]; then
         ...
     fi
 
 id -u prints the numeric user ID of the current process. On Linux, user ID 0 is root.
 
-The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with a fake shutdown executable. Do not set test mode for normal use.
+The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with harmless mock commands. Do not set test mode for normal use.
 
 ### 4.8 Check shutdown
 
@@ -191,7 +191,7 @@ The normal command asks the user to run it with sudo. The test-mode exception is
         ...
     fi
 
-The -x test checks whether the path exists and is executable. If shutdown cannot be found, the script stops before beginning the countdown.
+The -x test checks whether the selected command exists and is executable. The shutdown executable is required only when no GNOME session bus is available; the GNOME path instead requires runuser for switching back to the desktop user.
 
 ### 4.9 Signals and Ctrl+C
 
@@ -333,7 +333,7 @@ If other files remain, rmdir fails and the directory is left in place. This is i
 
 The test suite uses Python's standard library. It does not require third-party Python packages.
 
-### 7.1 Why mock shutdown?
+### 7.1 Why mock the power-off commands?
 
 A test must never accidentally power off the developer's computer or a CI machine.
 
@@ -358,10 +358,10 @@ The suite checks:
 5. A failed or cancelled GNOME request does not fall back to shutdown.
 6. SIGINT during the countdown prevents either power-off request from running.
 7. Installation creates the executable and all aliases.
-6. Reinstallation is idempotent.
-7. Alias conflicts do not overwrite unrelated files.
-8. An unmanaged library directory is not overwritten.
-9. Uninstallation removes project-owned files and preserves unrelated files.
+8. Reinstallation is idempotent.
+9. Alias conflicts do not overwrite unrelated files.
+10. An unmanaged library directory is not overwritten.
+11. Uninstallation removes project-owned files and preserves unrelated files.
 
 A passing test means the tested behavior worked in that test environment. It does not prove that every Linux distribution, filesystem, shell, or hardware setup behaves identically.
 
@@ -381,9 +381,11 @@ The expected final message reports that all test groups passed and no real shutd
 
 The test file imports only Python standard-library modules:
 
+- getpass identifies the current test user for the simulated SUDO_USER value.
 - os reads and modifies environment variables and sends signals.
 - pathlib builds filesystem paths safely.
 - signal provides signal names such as SIGINT and SIGKILL.
+- socket creates the temporary Unix-domain socket used to simulate a session bus.
 - subprocess starts programs and captures their output.
 - tempfile creates temporary directories that are automatically cleaned up.
 - time measures deadlines while waiting for the countdown to begin.
