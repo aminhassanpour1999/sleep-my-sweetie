@@ -24,7 +24,11 @@ Clone the repository and run:
     make test
     make lint
 
-The test suite uses mock shutdown and GNOME-session executables, a temporary Unix-socket path, and temporary installation prefixes. It must never call the real system power-off command.
+Check the local shutdown environment safely with:
+
+    sh bin/sleep_my_sweetie --doctor
+
+The test suite uses mock shutdown and GNOME-session executables, a temporary Unix-socket path, and temporary installation prefixes. It also checks diagnostic-only execution, version/changelog consistency, and that installation does not depend on systemctl. It must never call the real system power-off command.
 
 ## Pull requests
 
