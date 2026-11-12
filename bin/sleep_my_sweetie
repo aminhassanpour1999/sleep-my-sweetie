@@ -112,16 +112,22 @@ printf 'Goodnight! ❤️\n'
 if [ "$GNOME_AVAILABLE" -eq 1 ]; then
     printf 'Requesting power-off confirmation from GNOME for %s...\n' "$CALLING_USER"
     if [ "$TEST_MODE" = 1 ]; then
-        env XDG_RUNTIME_DIR="$RUNTIME_DIR" \
+        if env XDG_RUNTIME_DIR="$RUNTIME_DIR" \
             DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME_DIR/bus" \
-            "$GNOME_SESSION_QUIT" --power-off
-        request_status=$?
+            "$GNOME_SESSION_QUIT" --power-off; then
+            request_status=0
+        else
+            request_status=$?
+        fi
     else
-        "$RUNUSER" -u "$CALLING_USER" -- env \
+        if "$RUNUSER" -u "$CALLING_USER" -- env \
             XDG_RUNTIME_DIR="$RUNTIME_DIR" \
             DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME_DIR/bus" \
-            "$GNOME_SESSION_QUIT" --power-off
-        request_status=$?
+            "$GNOME_SESSION_QUIT" --power-off; then
+            request_status=0
+        else
+            request_status=$?
+        fi
     fi
     if [ "$request_status" -ne 0 ]; then
         printf 'GNOME power-off request was cancelled or failed (exit status %s).\n' "$request_status" >&2
