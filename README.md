@@ -39,7 +39,7 @@ Dry-run mode does not require root and never calls the shutdown command.
 - Uses the standard `shutdown -h now` command when no active GNOME session bus is available.
 - Installer and uninstaller with ownership-marker checks.
 - Refuses to overwrite unrelated command aliases or unmanaged install directories.
-- Safe integration tests using a mock shutdown command and temporary directories.
+- Safe integration tests using mock shutdown and GNOME-session commands and temporary directories.
 - GitHub Actions workflow for tests and ShellCheck.
 
 ## Requirements
@@ -80,7 +80,7 @@ Run an installed alias with sudo:
 
     sudo sleep_my_sweetie
 
-The program runs `/usr/sbin/shutdown -h now` only after the countdown finishes. This uses the standard shutdown utility and requests an immediate halt/power-off. The system still applies its normal session, authorization, and inhibitor policies. Save your work before running it.
+After the countdown, the program checks for the calling user's active GNOME session bus. When available, it switches back to that desktop user and runs `gnome-session-quit --power-off`, so GNOME presents its normal confirmation dialog. Choosing **Power Off** continues; choosing **Cancel** leaves the computer running. If no GNOME session bus is available, the program uses `/usr/sbin/shutdown -h now`. It does not bypass system inhibitors. Save your work before running it.
 
 ### Dry run
 
@@ -90,7 +90,7 @@ This displays the planned action and exits without requesting shutdown.
 
 ### Cancel
 
-Press Ctrl+C during the countdown. The script handles SIGINT and exits before calling the shutdown command.
+Press Ctrl+C during the countdown. The script handles SIGINT and exits before requesting power-off from GNOME or the shutdown utility.
 
 ## Available commands
 
