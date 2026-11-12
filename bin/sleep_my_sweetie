@@ -52,7 +52,7 @@ printf 'Time to rest.\n\n'
 
 if [ "$DRY_RUN" -eq 1 ]; then
     printf 'Dry run: no shutdown will be requested.\n'
-    printf 'Would execute: %s --poweroff now\n' "$SHUTDOWN"
+    printf 'Would execute: %s -h now\n' "$SHUTDOWN"
     exit 0
 fi
 
@@ -80,4 +80,4 @@ done
 
 trap - INT TERM
 printf 'Goodnight! ❤️\n'
-exec "$SHUTDOWN" --poweroff now
+exec "$SHUTDOWN" -h now
