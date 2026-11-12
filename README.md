@@ -78,7 +78,7 @@ Run an installed alias with sudo:
 
     sudo sleep_my_sweetie
 
-The program runs `/usr/sbin/shutdown -h now` only after the countdown finishes. This uses the standard system shutdown path rather than asking `systemctl` to perform an interactive inhibitor pre-check. Normal shutdown handling and service-stop ordering remain under systemd. Save your work before running it.
+The program runs `/usr/sbin/shutdown -h now` only after the countdown finishes. This uses the standard shutdown utility and requests an immediate halt/power-off. The system still applies its normal session, authorization, and inhibitor policies. Save your work before running it.
 
 ### Dry run
 
