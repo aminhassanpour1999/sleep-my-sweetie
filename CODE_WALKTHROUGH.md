@@ -148,10 +148,11 @@ The script first checks the number of arguments:
 
 $# is the number of arguments supplied by the user. The program accepts no more than one argument.
 
-The case statement recognizes five situations:
+The case statement recognizes six situations:
 
 - -h or --help: show help and exit successfully.
 - -V or --version: print VERSION and exit successfully.
+- --doctor: report the environment and selected power-off route without requesting power-off.
 - --dry-run: show the planned action without requesting shutdown.
 - No argument: continue with the normal shutdown flow.
 - Any other argument: print an error and exit with status 2.
@@ -164,7 +165,13 @@ The printf commands display the greeting. printf is used instead of echo because
 
 The backslash-n sequence means a newline.
 
-### 4.6 Dry-run mode
+### 4.6 Diagnostics with --doctor
+
+The diagnostic mode is deliberately read-only. It reports the program version, current and desktop user, desktop/session environment, whether a GNOME session-bus socket is available, and whether the executables required by the selected route are present. It reports either the GNOME confirmation route or the standard shutdown fallback. It does not display the countdown and does not invoke either power-off command.
+
+A successful diagnostic means the required local commands and socket path were found. It does not prove that GNOME will accept a future request, that system authorization will succeed, or that systemd inhibitors will allow power-off.
+
+### 4.7 Dry-run mode
 
 The dry-run branch prints what would happen and exits:
 
@@ -176,7 +183,7 @@ The dry-run branch prints what would happen and exits:
 
 The exit command stops the script. It never reaches the countdown or shutdown.
 
-### 4.7 Check administrative privileges
+### 4.8 Check administrative privileges
 
     if [ "$(id -u)" -ne 0 ] && [ "$TEST_MODE" != 1 ]; then
         ...
@@ -186,7 +193,7 @@ id -u prints the numeric user ID of the current process. On Linux, user ID 0 is 
 
 The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with harmless mock commands. Do not set test mode for normal use.
 
-### 4.8 Check shutdown
+### 4.9 Check shutdown
 
     if [ ! -x "$SHUTDOWN" ]; then
         ...
@@ -194,7 +201,7 @@ The normal command asks the user to run it with sudo. The test-mode exception is
 
 The -x test checks whether the selected command exists and is executable. The shutdown executable is required only when no GNOME session bus is available; the GNOME path instead requires runuser for switching back to the desktop user.
 
-### 4.9 Signals and Ctrl+C
+### 4.10 Signals and Ctrl+C
 
 A signal is a notification sent to a process by the operating system or another process.
 
@@ -209,7 +216,7 @@ The SIGINT trap prints a cancellation message and exits with status 130. The SIG
 
 This prevents the script from continuing to shutdown after the user interrupts the countdown.
 
-### 4.10 The countdown loop
+### 4.11 The countdown loop
 
     remaining=5
     while [ "$remaining" -gt 0 ]; do
@@ -226,7 +233,7 @@ This prevents the script from continuing to shutdown after the user interrupts t
 
 The visible sequence is 5, 4, 3, 2, 1.
 
-### 4.11 Request the power-off
+### 4.12 Request the power-off
 
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
@@ -246,7 +253,7 @@ Both paths can lead to a real power-off. Save your work before running the comma
 
 ## 5. The installer: install.sh
 
-The installer copies the command to a system location and creates symbolic links.
+The installer copies the command to a system location and creates symbolic links. It does not need systemctl at installation time; the executable selected for power-off is checked when the command runs.
 
 ### 5.1 Installation prefix
 
@@ -352,17 +359,19 @@ The installer tests set PREFIX to a folder inside this temporary directory. They
 
 The suite checks:
 
-1. Help text and invalid argument handling.
-2. Dry-run mode does not call shutdown.
-3. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
-4. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
-5. A failed or cancelled GNOME request does not fall back to shutdown.
-6. SIGINT during the countdown prevents either power-off request from running.
-7. Installation creates the executable and all aliases.
-8. Reinstallation is idempotent.
-9. Alias conflicts do not overwrite unrelated files.
-10. An unmanaged library directory is not overwritten.
-11. Uninstallation removes project-owned files and preserves unrelated files.
+1. Help text, invalid argument handling, and version/changelog consistency.
+2. Doctor mode reports the GNOME route without requesting power-off.
+3. Doctor mode reports the standard-shutdown fallback without invoking it.
+4. Dry-run mode does not call shutdown.
+5. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
+6. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
+7. A failed or cancelled GNOME request does not fall back to shutdown.
+8. SIGINT during the countdown prevents either power-off request from running.
+9. Installation creates the executable and all aliases without requiring systemctl.
+10. Reinstallation is idempotent.
+11. Alias conflicts do not overwrite unrelated files.
+12. An unmanaged library directory is not overwritten.
+13. Uninstallation removes project-owned files and preserves unrelated files.
 
 A passing test means the tested behavior worked in that test environment. It does not prove that every Linux distribution, filesystem, shell, or hardware setup behaves identically.
 
