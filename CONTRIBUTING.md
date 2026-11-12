@@ -24,7 +24,7 @@ Clone the repository and run:
     make test
     make lint
 
-The test suite uses a mock systemctl executable and temporary installation prefixes. It must never call the real system power-off command.
+The test suite uses a mock shutdown executable and temporary installation prefixes. It must never call the real system power-off command.
 
 ## Pull requests
 
@@ -39,6 +39,6 @@ Keep pull requests focused and avoid adding features that make this small utilit
 
 ## Security-sensitive changes
 
-Changes to install paths, symbolic links, privilege checks, signal handling, or systemctl execution require particular care. Explain how the change avoids overwriting unrelated files and how it is tested safely.
+Changes to install paths, symbolic links, privilege checks, signal handling, or shutdown-command execution require particular care. Explain how the change avoids overwriting unrelated files and how it is tested safely.
 
 Thank you for helping improve the project.
