@@ -2,6 +2,11 @@
 
 Notable project changes are documented here.
 
+## [1.1.2] - 2026-11-12
+
+- Use `shutdown -h now` for the final power-off request, matching the command form verified on the target Ubuntu system.
+- Updated dry-run output, safe tests, and documentation to use the `-h now` arguments.
+
 ## [1.1.1] - 2026-11-11
 
 - Switched the final power-off request to the standard `shutdown --poweroff now` command, allowing systemd/logind to handle the normal shutdown sequence without systemctl's interactive inhibitor pre-check.
