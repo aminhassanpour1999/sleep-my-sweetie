@@ -44,7 +44,7 @@ def test_help_and_arguments():
     assert "goodnight_my_love" in help_result.stdout
     long_version = run(["sh", str(COMMAND), "--version"])
     short_version = run(["sh", str(COMMAND), "-V"])
-        assert short_version.stdout.strip() == long_version.stdout.strip()
+    assert short_version.stdout.strip() == long_version.stdout.strip()
     assert long_version.stdout.strip() == "Sleep, My Sweetie 1.2.0"
     invalid = run(["sh", str(COMMAND), "--invalid"], check=False)
     assert invalid.returncode == 2
@@ -72,8 +72,8 @@ def test_doctor_uses_gnome_route_without_requesting_poweroff():
         bus_path = runtime / "bus"
         with socket.socket(socket.AF_UNIX) as bus:
             bus.bind(str(bus_path))
-        gnome_mock = executable(base / "gnome-session-quit", "#!/bin/sh\\nexit 0\\n")
-        shutdown_mock = executable(base / "shutdown", "#!/bin/sh\\nexit 99\\n")
+        gnome_mock = executable(base / "gnome-session-quit", "#!/bin/sh\nexit 0\n")
+        shutdown_mock = executable(base / "shutdown", "#!/bin/sh\nexit 99\n")
         env = os.environ.copy()
         env.update({
             "SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT": str(gnome_mock),
@@ -94,7 +94,7 @@ def test_doctor_uses_shutdown_fallback_without_requesting_poweroff():
         log = base / "shutdown.log"
         shutdown_mock = executable(
             base / "shutdown",
-            '#!/bin/sh\\nprintf "%s\\\\n" "$*" >> "$MOCK_LOG"\\n',
+            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n',
         )
         env = os.environ.copy()
         env.update({
