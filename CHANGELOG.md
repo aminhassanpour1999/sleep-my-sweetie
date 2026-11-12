@@ -2,6 +2,12 @@
 
 Notable project changes are documented here.
 
+## [1.1.4] - 2026-11-12
+
+- Add `--version` and `-V` options to display the program version without starting the countdown or requesting power-off.
+- Add automated tests for both version options.
+- Update user and developer documentation for version reporting.
+
 ## [1.1.3] - 2026-11-12
 
 - Use the active GNOME desktop session to request power-off and display GNOME's standard confirmation dialog when available.

@@ -119,7 +119,7 @@ The file uses sh and stops on many unexpected errors or unset variables.
 
 ### 4.2 Program name and shutdown path
 
-The program derives PROGRAM_NAME from its script path. This value is used in the helpful sudo instruction.
+The program stores its release number in the VERSION variable. The `--version` and `-V` options print this value and exit before the greeting, countdown, privilege check, or power-off logic. PROGRAM_NAME is derived from the script path and is used in the helpful sudo instruction.
 
 SHUTDOWN normally points to /usr/sbin/shutdown. The environment override SLEEP_MY_SWEETIE_SHUTDOWN exists so automated tests can provide a harmless fake executable. GNOME_SESSION_QUIT normally points to /usr/bin/gnome-session-quit. The script uses SUDO_USER to identify the desktop user who launched the command with sudo, derives that user's runtime directory, and checks for the session-bus socket before selecting the GNOME route. SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT and SLEEP_MY_SWEETIE_RUNTIME_DIR let tests substitute a mock command and temporary socket location. These overrides are not normal user configuration features.
 
@@ -148,9 +148,10 @@ The script first checks the number of arguments:
 
 $# is the number of arguments supplied by the user. The program accepts no more than one argument.
 
-The case statement recognizes four situations:
+The case statement recognizes five situations:
 
 - -h or --help: show help and exit successfully.
+- -V or --version: print VERSION and exit successfully.
 - --dry-run: show the planned action without requesting shutdown.
 - No argument: continue with the normal shutdown flow.
 - Any other argument: print an error and exit with status 2.
