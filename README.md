@@ -36,6 +36,12 @@ Display the installed program version without starting the countdown:
     sleep_my_sweetie --version
     sleep_my_sweetie -V
 
+Run a local environment diagnostic without requesting power-off:
+
+    sleep_my_sweetie --doctor
+
+The diagnostic reports the selected GNOME or standard-shutdown route and exits without initiating either action.
+
 ## Features
 
 - Eight command names with one canonical implementation.
@@ -43,6 +49,7 @@ Display the installed program version without starting the countdown:
 - Ctrl+C and SIGTERM handling during the countdown.
 - Dry-run mode for safe preview.
 - `--version` and `-V` options to display the program version.
+- `--doctor` diagnostics for checking the local power-off environment without initiating power-off.
 - Uses GNOME's standard power-off confirmation when launched with `sudo` from an active GNOME desktop session.
 - Uses the standard `shutdown -h now` command when no active GNOME session bus is available.
 - Installer and uninstaller with ownership-marker checks.
@@ -131,7 +138,7 @@ Run the safe integration tests:
 
     make test
 
-The test suite uses mock shutdown and GNOME-session commands, a temporary Unix-socket path, and temporary installation prefixes. It checks help output, argument validation, dry-run behavior, both power-off request paths, GNOME cancellation without fallback, Ctrl+C cancellation, installation, reinstall, conflicts, and uninstallation.
+The test suite uses mock shutdown and GNOME-session commands, a temporary Unix-socket path, and temporary installation prefixes. It checks help and argument validation, version consistency, doctor diagnostics for both routes, dry-run behavior, both power-off request paths, GNOME cancellation without fallback, Ctrl+C cancellation, installation without a systemctl dependency, reinstall, conflicts, and uninstallation.
 
 **The tests never invoke the real system power-off command.**
 
