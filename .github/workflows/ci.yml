@@ -10,8 +10,14 @@ permissions:
 
 jobs:
   test-and-lint:
-    name: Tests and ShellCheck
-    runs-on: ubuntu-latest
+    name: Tests and ShellCheck (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
