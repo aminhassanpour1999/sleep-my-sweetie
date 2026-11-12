@@ -233,7 +233,7 @@ The visible sequence is 5, 4, 3, 2, 1.
 
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
-exec replaces the current shell process with shutdown. The `-h now` arguments ask the standard shutdown utility to request a normal system power-off through systemd/logind.
+exec replaces the current shell process with shutdown. The `-h now` arguments use the exact command form verified on the target Ubuntu system. The `-h` option requests halt/power-off, and `now` requests it immediately. The system still applies its normal session, authorization, and inhibitor policies.
 
 This is the real, potentially destructive operation. Save your work before running the command.
 
