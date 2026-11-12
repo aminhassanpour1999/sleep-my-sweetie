@@ -53,7 +53,13 @@ def test_dry_run_never_calls_shutdown():
         log = base / "shutdown.log"
         mock = executable(base / "shutdown", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
         env = os.environ.copy()
-        env.update({"SLEEP_MY_SWEETIE_SHUTDOWN": str(mock), "MOCK_LOG": str(log)})
+        no_bus = base / "no-bus"
+        no_bus.mkdir()
+        env.update({
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(no_bus),
+            "MOCK_LOG": str(log),
+        })
         result = run(["sh", str(COMMAND), "--dry-run"], env)
         assert "Dry run" in result.stdout
         assert f"Would execute: {mock} -h now" in result.stdout
@@ -71,8 +77,10 @@ def test_normal_flow_uses_mock_shutdown():
             "PATH": f"{base}:{env.get('PATH', '')}",
             "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
             "SLEEP_MY_SWEETIE_TEST_MODE": "1",
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(base / "no-bus"),
             "MOCK_LOG": str(log),
         })
+        (base / "no-bus").mkdir()
         env.pop("SUDO_USER", None)
         result = run(["sh", str(COMMAND)], env)
         assert "Goodnight!" in result.stdout
@@ -93,13 +101,13 @@ def test_gnome_session_poweroff_uses_desktop_user_bus():
         shutdown_log = base / "shutdown.log"
         gnome_mock = executable(
             base / "gnome-session-quit",
-            '#!/bin/sh\\nprintf "%s|%s|%s\\n" "$*" "$XDG_RUNTIME_DIR" "$DBUS_SESSION_BUS_ADDRESS" >> "$GNOME_LOG"\\nexit "${MOCK_EXIT:-0}"\\n',
+            '#!/bin/sh\nprintf "%s|%s|%s\n" "$*" "$XDG_RUNTIME_DIR" "$DBUS_SESSION_BUS_ADDRESS" >> "$GNOME_LOG"\nexit "${MOCK_EXIT:-0}"\n',
         )
         shutdown_mock = executable(
             base / "shutdown",
-            '#!/bin/sh\\nprintf "%s\\n" "$*" >> "$SHUTDOWN_LOG"\\n',
+            '#!/bin/sh\nprintf "%s\n" "$*" >> "$SHUTDOWN_LOG"\n',
         )
-        fake_sleep = executable(base / "sleep", "#!/bin/sh\\nexit 0\\n")
+        fake_sleep = executable(base / "sleep", "#!/bin/sh\nexit 0\n")
         env = os.environ.copy()
         env.update({
             "PATH": f"{base}:{env.get('PATH', '')}",
@@ -140,8 +148,11 @@ def test_ctrl_c_cancels_before_shutdown():
             "PATH": f"{base}:{env.get('PATH', '')}",
             "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
             "SLEEP_MY_SWEETIE_TEST_MODE": "1",
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(base / "no-bus"),
             "MOCK_LOG": str(log),
         })
+        (base / "no-bus").mkdir()
+        env.pop("SUDO_USER", None)
         process = subprocess.Popen(
             ["sh", str(COMMAND)], cwd=ROOT, env=env, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
