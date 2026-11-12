@@ -169,7 +169,7 @@ The dry-run branch prints what would happen and exits:
 
     if [ "$DRY_RUN" -eq 1 ]; then
         printf 'Dry run: no shutdown will be requested.\n'
-        printf 'Would execute: %s --poweroff now\n' "$SHUTDOWN"
+        printf 'Would execute: %s -h now\n' "$SHUTDOWN"
         exit 0
     fi
 
@@ -229,11 +229,11 @@ The visible sequence is 5, 4, 3, 2, 1.
 
     trap - INT TERM
     printf 'Goodnight! ❤️\n'
-    exec "$SHUTDOWN" --poweroff now
+    exec "$SHUTDOWN" -h now
 
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
-exec replaces the current shell process with shutdown. The `--poweroff now` arguments ask the standard shutdown utility to request a normal system power-off through systemd/logind.
+exec replaces the current shell process with shutdown. The `-h now` arguments ask the standard shutdown utility to request a normal system power-off through systemd/logind.
 
 This is the real, potentially destructive operation. Save your work before running the command.
 
@@ -333,7 +333,7 @@ A test must never accidentally power off the developer's computer or a CI machin
 
 The tests create a temporary executable named shutdown. It only writes its arguments to a log file. The main script is told to use this mock through SLEEP_MY_SWEETIE_SHUTDOWN.
 
-When the command reaches the power-off step during a test, the fake executable records `--poweroff now` instead of powering off the machine.
+When the command reaches the power-off step during a test, the fake executable records `-h now` instead of powering off the machine.
 
 ### 7.2 Temporary directories
 
@@ -347,7 +347,7 @@ The suite checks:
 
 1. Help text and invalid argument handling.
 2. Dry-run mode does not call shutdown.
-3. Normal execution reaches the mock shutdown with the `--poweroff now` arguments.
+3. Normal execution reaches the mock shutdown with the `-h now` arguments.
 4. SIGINT during the countdown prevents shutdown from running.
 5. Installation creates the executable and all aliases.
 6. Reinstallation is idempotent.
@@ -414,7 +414,7 @@ Creates a fake shutdown program that would write its arguments to a log. It runs
 
 **test_normal_flow_uses_mock_shutdown**
 
-Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded arguments are `--poweroff now`.
+Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded arguments are `-h now`.
 
 No actual system shutdown is requested.
 
