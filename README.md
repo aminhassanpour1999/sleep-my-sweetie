@@ -152,7 +152,7 @@ ShellCheck reviews the shell scripts for common mistakes. It is not proof that t
 
 ## Continuous integration
 
-GitHub Actions runs the test suite and ShellCheck on pushes, pull requests, and manual workflow dispatches. See the Actions tab in the repository for results.
+GitHub Actions runs the test suite and ShellCheck on Ubuntu 22.04 and 24.04 for pushes, pull requests, and manual workflow dispatches. The release workflow runs when a version tag (for example, v1.2.0) is pushed: it repeats the tests and ShellCheck, then creates a GitHub Release with generated notes. See the Actions tab in the repository for results.
 
 ## Project structure
 
