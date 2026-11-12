@@ -54,6 +54,7 @@ def test_dry_run_never_calls_shutdown():
         env.update({"SLEEP_MY_SWEETIE_SHUTDOWN": str(mock), "MOCK_LOG": str(log)})
         result = run(["sh", str(COMMAND), "--dry-run"], env)
         assert "Dry run" in result.stdout
+        assert f"Would execute: {mock} -h now" in result.stdout
         assert not log.exists()
 
 
@@ -72,7 +73,7 @@ def test_normal_flow_uses_mock_shutdown():
         })
         result = run(["sh", str(COMMAND)], env)
         assert "Goodnight!" in result.stdout
-        assert log.read_text(encoding="utf-8").strip() == "--poweroff now"
+        assert log.read_text(encoding="utf-8").strip() == "-h now"
 
 
 def test_ctrl_c_cancels_before_shutdown():

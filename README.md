@@ -21,7 +21,7 @@ Then run any alias:
     sudo shut_down_sweetheart
     sudo time_to_sleep
 
-The command displays a friendly message, counts down from five, and requests a system power-off through the standard `shutdown --poweroff now` command. Press Ctrl+C during the countdown to cancel.
+The command displays a friendly message, counts down from five, and requests a system power-off through the standard `shutdown -h now` command. Press Ctrl+C during the countdown to cancel.
 
 ## Safe preview
 
@@ -78,7 +78,7 @@ Run an installed alias with sudo:
 
     sudo sleep_my_sweetie
 
-The program runs `/usr/sbin/shutdown --poweroff now` only after the countdown finishes. This uses the standard system shutdown path rather than asking `systemctl` to perform an interactive inhibitor pre-check. Normal shutdown handling and service-stop ordering remain under systemd. Save your work before running it.
+The program runs `/usr/sbin/shutdown -h now` only after the countdown finishes. This uses the standard shutdown utility and requests an immediate halt/power-off. The system still applies its normal session, authorization, and inhibitor policies. Save your work before running it.
 
 ### Dry run
 
