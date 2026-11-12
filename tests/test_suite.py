@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safe integration tests. A mock shutdown command is used; no real shutdown occurs."""
+"""Safe integration tests use mocks; no real shutdown or GNOME action occurs."""
 
 import getpass
 import os
@@ -101,11 +101,11 @@ def test_gnome_session_poweroff_uses_desktop_user_bus():
         shutdown_log = base / "shutdown.log"
         gnome_mock = executable(
             base / "gnome-session-quit",
-            '#!/bin/sh\nprintf "%s|%s|%s\n" "$*" "$XDG_RUNTIME_DIR" "$DBUS_SESSION_BUS_ADDRESS" >> "$GNOME_LOG"\nexit "${MOCK_EXIT:-0}"\n',
+            '#!/bin/sh\nprintf "%s|%s|%s\\n" "$*" "$XDG_RUNTIME_DIR" "$DBUS_SESSION_BUS_ADDRESS" >> "$GNOME_LOG"\nexit "${MOCK_EXIT:-0}"\n',
         )
         shutdown_mock = executable(
             base / "shutdown",
-            '#!/bin/sh\nprintf "%s\n" "$*" >> "$SHUTDOWN_LOG"\n',
+            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$SHUTDOWN_LOG"\n',
         )
         fake_sleep = executable(base / "sleep", "#!/bin/sh\nexit 0\n")
         env = os.environ.copy()
