@@ -26,7 +26,8 @@ When a user runs an alias with `sudo`, the program prints a message and displays
     sleep-my-sweetie/
     ├── .github/
     │   └── workflows/
-    │       └── ci.yml
+    │       ├── ci.yml
+    │       └── release.yml
     ├── bin/
     │   └── sleep_my_sweetie
     ├── tests/
@@ -50,7 +51,8 @@ When a user runs an alias with `sudo`, the program prints a message and displays
 | uninstall.sh | Removes only a verified installation |
 | tests/test_suite.py | Runs safe automated tests |
 | Makefile | Provides short development commands |
-| .github/workflows/ci.yml | Runs tests and ShellCheck on GitHub |
+| .github/workflows/ci.yml | Runs tests and ShellCheck on Ubuntu LTS versions |
+| .github/workflows/release.yml | Verifies version tags and creates GitHub Releases |
 | README.md | User-facing installation and usage guide |
 | CODE_WALKTHROUGH.md | Detailed explanation of the code |
 | CONTRIBUTING.md | Contributor guidance |
@@ -489,11 +491,11 @@ ShellCheck does not prove a script is bug-free. It is an additional review tool.
 
 ## 10. GitHub Actions continuous integration
 
-The workflow lives at .github/workflows/ci.yml.
+The CI workflow lives at .github/workflows/ci.yml. It runs the test suite and ShellCheck on Ubuntu 22.04 and 24.04.
 
 It runs when a commit is pushed, a pull request is opened or updated, or someone manually starts the workflow.
 
-The workflow checks out the repository, prepares Python, installs ShellCheck, runs the tests, and runs the linter.
+The workflow checks out the repository, prepares Python, installs ShellCheck, runs the tests, and runs the linter on both configured Ubuntu versions.
 
 This is called continuous integration (CI): every proposed change receives the same automated checks.
 
@@ -509,7 +511,7 @@ The changelog records user-visible changes. Semantic Versioning uses three numbe
 
 For example, 1.1.0 means the first minor feature update after 1.0.0.
 
-A Git tag such as v1.1.0 can point to the commit representing that release. A changelog entry and a Git tag are related but are not the same thing.
+A Git tag such as v1.2.0 points to the commit representing that release. A changelog entry, a Git tag, and a GitHub Release are separate artifacts. The release workflow runs for pushed v* tags, repeats tests and ShellCheck, and creates the GitHub Release with generated notes.
 
 ## 12. Safe manual workflow
 
