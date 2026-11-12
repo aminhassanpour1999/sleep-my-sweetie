@@ -72,7 +72,7 @@ def test_normal_flow_uses_mock_shutdown():
         })
         result = run(["sh", str(COMMAND)], env)
         assert "Goodnight!" in result.stdout
-        assert log.read_text(encoding="utf-8").strip() == "--poweroff now"
+        assert log.read_text(encoding="utf-8").strip() == "-h now"
 
 
 def test_ctrl_c_cancels_before_shutdown():
