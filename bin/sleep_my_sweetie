@@ -3,6 +3,9 @@
 set -eu
 PROGRAM_NAME=${0##*/}
 SHUTDOWN=${SLEEP_MY_SWEETIE_SHUTDOWN:-/usr/sbin/shutdown}
+GNOME_SESSION_QUIT=${SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT:-/usr/bin/gnome-session-quit}
+RUNUSER=/usr/sbin/runuser
+TEST_MODE=${SLEEP_MY_SWEETIE_TEST_MODE:-0}
 
 show_help() {
     cat <<'HELP'
@@ -22,10 +25,13 @@ Options:
   -h, --help    Show this help message and exit
   --dry-run     Show what would happen without powering off
 
-The command displays a five-second countdown and then requests a system
-power-off using the standard shutdown command. Press Ctrl+C during the countdown to cancel.
+The command displays a five-second countdown. In an active GNOME desktop
+session it asks GNOME to show its standard power-off confirmation; otherwise
+it uses the standard shutdown command. Press Ctrl+C during the countdown to cancel.
 
-SLEEP_MY_SWEETIE_SHUTDOWN is intended for automated tests only.
+SLEEP_MY_SWEETIE_SHUTDOWN, SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT,
+SLEEP_MY_SWEETIE_RUNTIME_DIR, and SLEEP_MY_SWEETIE_TEST_MODE are intended
+for automated tests only.
 HELP
 }
 
@@ -50,21 +56,43 @@ printf '\nGoodnight, my sweetie. ❤️\n'
 printf "You've worked hard today.\n"
 printf 'Time to rest.\n\n'
 
+# sudo sets SUDO_USER to the desktop user who launched this command. A live
+# session bus plus gnome-session-quit lets GNOME own the confirmation flow.
+CALLING_USER=${SUDO_USER:-$(id -un)}
+CALLING_UID=$(id -u "$CALLING_USER" 2>/dev/null || true)
+RUNTIME_DIR=${SLEEP_MY_SWEETIE_RUNTIME_DIR:-/run/user/${CALLING_UID:-0}}
+GNOME_AVAILABLE=0
+if [ -n "$CALLING_UID" ] && [ "$CALLING_UID" -gt 0 ] 2>/dev/null &&
+    [ -S "$RUNTIME_DIR/bus" ] && [ -x "$GNOME_SESSION_QUIT" ]; then
+    GNOME_AVAILABLE=1
+fi
+
 if [ "$DRY_RUN" -eq 1 ]; then
     printf 'Dry run: no shutdown will be requested.\n'
-    printf 'Would execute: %s -h now\n' "$SHUTDOWN"
+    if [ "$GNOME_AVAILABLE" -eq 1 ]; then
+        printf 'Would request GNOME power-off confirmation for user: %s\n' "$CALLING_USER"
+    else
+        printf 'Would execute: %s -h now\n' "$SHUTDOWN"
+    fi
     exit 0
 fi
 
-# This test-only switch is used with a harmless mock shutdown command in CI.
-if [ "$(id -u)" -ne 0 ] && [ "${SLEEP_MY_SWEETIE_TEST_MODE:-0}" != 1 ]; then
+# This test-only switch allows CI to exercise the request flow without root.
+if [ "$(id -u)" -ne 0 ] && [ "$TEST_MODE" != 1 ]; then
     printf 'Please run this command with sudo:\n  sudo %s\n' "$PROGRAM_NAME" >&2
     exit 1
 fi
 
-if [ ! -x "$SHUTDOWN" ]; then
-    printf 'Error: shutdown executable not found: %s\n' "$SHUTDOWN" >&2
-    exit 1
+if [ "$GNOME_AVAILABLE" -eq 1 ]; then
+    if [ "$TEST_MODE" != 1 ] && [ ! -x "$RUNUSER" ]; then
+        printf 'Error: runuser executable not found: %s\n' "$RUNUSER" >&2
+        exit 1
+    fi
+else
+    if [ ! -x "$SHUTDOWN" ]; then
+        printf 'Error: shutdown executable not found: %s\n' "$SHUTDOWN" >&2
+        exit 1
+    fi
 fi
 
 trap 'printf "\nShutdown cancelled. Your computer will stay on.\n" >&2; exit 130' INT
@@ -80,4 +108,32 @@ done
 
 trap - INT TERM
 printf 'Goodnight! ❤️\n'
+
+if [ "$GNOME_AVAILABLE" -eq 1 ]; then
+    printf 'Requesting power-off confirmation from GNOME for %s...\n' "$CALLING_USER"
+    if [ "$TEST_MODE" = 1 ]; then
+        if env XDG_RUNTIME_DIR="$RUNTIME_DIR" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME_DIR/bus" \
+            "$GNOME_SESSION_QUIT" --power-off; then
+            request_status=0
+        else
+            request_status=$?
+        fi
+    else
+        if "$RUNUSER" -u "$CALLING_USER" -- env \
+            XDG_RUNTIME_DIR="$RUNTIME_DIR" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME_DIR/bus" \
+            "$GNOME_SESSION_QUIT" --power-off; then
+            request_status=0
+        else
+            request_status=$?
+        fi
+    fi
+    if [ "$request_status" -ne 0 ]; then
+        printf 'GNOME power-off request was cancelled or failed (exit status %s).\n' "$request_status" >&2
+        exit "$request_status"
+    fi
+    exit 0
+fi
+
 exec "$SHUTDOWN" -h now

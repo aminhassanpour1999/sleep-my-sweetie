@@ -24,7 +24,7 @@ Clone the repository and run:
     make test
     make lint
 
-The test suite uses a mock shutdown executable and temporary installation prefixes. It must never call the real system power-off command.
+The test suite uses mock shutdown and GNOME-session executables, a temporary Unix-socket path, and temporary installation prefixes. It must never call the real system power-off command.
 
 ## Pull requests
 

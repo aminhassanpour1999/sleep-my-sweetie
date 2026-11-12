@@ -23,11 +23,13 @@ It does not intentionally collect data, communicate over a network, install a ba
 
 SLEEP_MY_SWEETIE_SHUTDOWN allows the test suite to substitute a harmless mock executable for the shutdown command.
 
+SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT allows tests to substitute a harmless mock for `gnome-session-quit`. SLEEP_MY_SWEETIE_RUNTIME_DIR allows tests to provide a temporary directory containing a mock Unix-domain session-bus socket.
+
 SLEEP_MY_SWEETIE_TEST_MODE allows the test suite to exercise the normal command path without root privileges. It is intended only for automated tests and should not be set for normal use.
 
 PREFIX selects an installation prefix. The default is /usr/local. Custom prefixes are used for packaging and isolated tests.
 
-These variables are not a security boundary. Do not run scripts from untrusted sources as root.
+All SLEEP_MY_SWEETIE_* overrides above are intended only for automated tests and must not be used as normal configuration. These variables are not a security boundary. Do not run scripts from untrusted sources as root.
 
 ## Reporting a vulnerability
 

@@ -2,6 +2,14 @@
 
 Notable project changes are documented here.
 
+## [1.1.3] - 2026-11-12
+
+- Use the active GNOME desktop session to request power-off and display GNOME's standard confirmation dialog when available.
+- Keep the standard `shutdown -h now` fallback for environments without an active GNOME session bus.
+- Ensure cancelling or failing the GNOME request never falls back to a direct shutdown request.
+- Add safe automated coverage for GNOME session-bus routing and cancellation.
+- Update user and developer documentation for the GNOME-aware shutdown flow.
+
 ## [1.1.2] - 2026-11-12
 
 - Use `shutdown -h now` for the final power-off request, matching the command form verified on the target Ubuntu system.

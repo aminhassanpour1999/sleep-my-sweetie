@@ -19,7 +19,7 @@ Sleep, My Sweetie provides eight terminal command names:
 
 All eight names are symbolic links to one executable. They are not eight separate programs.
 
-When a user runs an alias with administrative privileges, the program prints a message, displays a five-second countdown, lets the user cancel with Ctrl+C, and finally asks systemd to power off the computer.
+When a user runs an alias with `sudo`, the program prints a message and displays a five-second countdown. It then asks the active GNOME desktop session to show its standard power-off confirmation when that session is available; otherwise it requests power-off through the standard shutdown command. Ctrl+C cancels during the countdown.
 
 ## 2. Project structure
 
@@ -121,7 +121,7 @@ The file uses sh and stops on many unexpected errors or unset variables.
 
 The program derives PROGRAM_NAME from its script path. This value is used in the helpful sudo instruction.
 
-SHUTDOWN normally points to /usr/sbin/shutdown. The environment override SLEEP_MY_SWEETIE_SHUTDOWN exists so automated tests can provide a harmless fake executable. It is not intended as a normal user configuration feature.
+SHUTDOWN normally points to /usr/sbin/shutdown. The environment override SLEEP_MY_SWEETIE_SHUTDOWN exists so automated tests can provide a harmless fake executable. GNOME_SESSION_QUIT normally points to /usr/bin/gnome-session-quit. The script uses SUDO_USER to identify the desktop user who launched the command with sudo, derives that user's runtime directory, and checks for the session-bus socket before selecting the GNOME route. SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT and SLEEP_MY_SWEETIE_RUNTIME_DIR let tests substitute a mock command and temporary socket location. These overrides are not normal user configuration features.
 
 ### 4.3 The help function
 
@@ -177,13 +177,13 @@ The exit command stops the script. It never reaches the countdown or shutdown.
 
 ### 4.7 Check administrative privileges
 
-    if [ "$(id -u)" -ne 0 ] && [ "$SLEEP_MY_SWEETIE_TEST_MODE" != 1 ]; then
+    if [ "$(id -u)" -ne 0 ] && [ "$TEST_MODE" != 1 ]; then
         ...
     fi
 
 id -u prints the numeric user ID of the current process. On Linux, user ID 0 is root.
 
-The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with a fake shutdown executable. Do not set test mode for normal use.
+The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with harmless mock commands. Do not set test mode for normal use.
 
 ### 4.8 Check shutdown
 
@@ -191,7 +191,7 @@ The normal command asks the user to run it with sudo. The test-mode exception is
         ...
     fi
 
-The -x test checks whether the path exists and is executable. If shutdown cannot be found, the script stops before beginning the countdown.
+The -x test checks whether the selected command exists and is executable. The shutdown executable is required only when no GNOME session bus is available; the GNOME path instead requires runuser for switching back to the desktop user.
 
 ### 4.9 Signals and Ctrl+C
 
@@ -227,15 +227,21 @@ The visible sequence is 5, 4, 3, 2, 1.
 
 ### 4.11 Request the power-off
 
-    trap - INT TERM
-    printf 'Goodnight! ❤️\n'
-    exec "$SHUTDOWN" -h now
-
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
-exec replaces the current shell process with shutdown. The `-h now` arguments use the exact command form verified on the target Ubuntu system. The `-h` option requests halt/power-off, and `now` requests it immediately. The system still applies its normal session, authorization, and inhibitor policies.
+If the calling user's runtime directory contains a live D-Bus session-bus socket and `gnome-session-quit` is installed, the script switches from root back to the original desktop user with `runuser`. It explicitly sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS`, then runs:
 
-This is the real, potentially destructive operation. Save your work before running the command.
+    gnome-session-quit --power-off
+
+GNOME displays its standard power-off confirmation. The user can choose Power Off or Cancel. A failed or cancelled GNOME request is reported and is never followed by a direct shutdown fallback.
+
+If no active GNOME session bus is available, the script uses:
+
+    exec "$SHUTDOWN" -h now
+
+The `-h now` arguments use the command form verified on the target Ubuntu system. The system still applies its normal session, authorization, and inhibitor policies. This fallback does not bypass inhibitors.
+
+Both paths can lead to a real power-off. Save your work before running the command.
 
 ## 5. The installer: install.sh
 
@@ -327,7 +333,7 @@ If other files remain, rmdir fails and the directory is left in place. This is i
 
 The test suite uses Python's standard library. It does not require third-party Python packages.
 
-### 7.1 Why mock shutdown?
+### 7.1 Why mock the power-off commands?
 
 A test must never accidentally power off the developer's computer or a CI machine.
 
@@ -347,13 +353,15 @@ The suite checks:
 
 1. Help text and invalid argument handling.
 2. Dry-run mode does not call shutdown.
-3. Normal execution reaches the mock shutdown with the `-h now` arguments.
-4. SIGINT during the countdown prevents shutdown from running.
-5. Installation creates the executable and all aliases.
-6. Reinstallation is idempotent.
-7. Alias conflicts do not overwrite unrelated files.
-8. An unmanaged library directory is not overwritten.
-9. Uninstallation removes project-owned files and preserves unrelated files.
+3. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
+4. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
+5. A failed or cancelled GNOME request does not fall back to shutdown.
+6. SIGINT during the countdown prevents either power-off request from running.
+7. Installation creates the executable and all aliases.
+8. Reinstallation is idempotent.
+9. Alias conflicts do not overwrite unrelated files.
+10. An unmanaged library directory is not overwritten.
+11. Uninstallation removes project-owned files and preserves unrelated files.
 
 A passing test means the tested behavior worked in that test environment. It does not prove that every Linux distribution, filesystem, shell, or hardware setup behaves identically.
 
@@ -373,9 +381,11 @@ The expected final message reports that all test groups passed and no real shutd
 
 The test file imports only Python standard-library modules:
 
+- getpass identifies the current test user for the simulated SUDO_USER value.
 - os reads and modifies environment variables and sends signals.
 - pathlib builds filesystem paths safely.
 - signal provides signal names such as SIGINT and SIGKILL.
+- socket creates the temporary Unix-domain socket used to simulate a session bus.
 - subprocess starts programs and captures their output.
 - tempfile creates temporary directories that are automatically cleaned up.
 - time measures deadlines while waiting for the countdown to begin.
@@ -414,9 +424,13 @@ Creates a fake shutdown program that would write its arguments to a log. It runs
 
 **test_normal_flow_uses_mock_shutdown**
 
-Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded arguments are `-h now`.
+Creates a fake sleep command that returns immediately, so the five countdown iterations do not take five seconds. It also creates a fake shutdown command that records its arguments. The test enables the test-only privilege bypass and verifies that the recorded arguments are `-h now` when no GNOME session bus is available.
 
-No actual system shutdown is requested.
+**test_gnome_session_poweroff_uses_desktop_user_bus**
+
+Creates a temporary Unix-domain socket to represent the desktop session bus and a mock gnome-session-quit executable. It verifies that the script passes the expected XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS values and requests `--power-off`. It then makes the mock return a failure status and verifies that the program reports the failure without falling back to the shutdown command.
+
+No actual system shutdown or GNOME action is requested.
 
 **test_ctrl_c_cancels_before_shutdown**
 
@@ -526,7 +540,8 @@ You should now be able to explain:
 - What conditions, functions, loops, and exit codes do.
 - How the countdown works.
 - How signal traps handle Ctrl+C.
-- Why the standard shutdown utility is used for the real power-off operation.
+- How the program routes power-off requests through GNOME's confirmation dialog when a GNOME session is active.
+- Why the standard shutdown utility remains the fallback for non-GNOME environments.
 - How an installer checks paths and creates symbolic links.
 - Why the ownership marker protects unrelated files.
 - How the uninstaller avoids recursive deletion.

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Safe integration tests. A mock shutdown command is used; no real shutdown occurs."""
+"""Safe integration tests use mocks; no real shutdown or GNOME action occurs."""
 
+import getpass
 import os
 import pathlib
 import signal
+import socket
 import subprocess
 import tempfile
 import time
@@ -51,7 +53,13 @@ def test_dry_run_never_calls_shutdown():
         log = base / "shutdown.log"
         mock = executable(base / "shutdown", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MOCK_LOG"\n')
         env = os.environ.copy()
-        env.update({"SLEEP_MY_SWEETIE_SHUTDOWN": str(mock), "MOCK_LOG": str(log)})
+        no_bus = base / "no-bus"
+        no_bus.mkdir()
+        env.update({
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(no_bus),
+            "MOCK_LOG": str(log),
+        })
         result = run(["sh", str(COMMAND), "--dry-run"], env)
         assert "Dry run" in result.stdout
         assert f"Would execute: {mock} -h now" in result.stdout
@@ -69,11 +77,64 @@ def test_normal_flow_uses_mock_shutdown():
             "PATH": f"{base}:{env.get('PATH', '')}",
             "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
             "SLEEP_MY_SWEETIE_TEST_MODE": "1",
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(base / "no-bus"),
             "MOCK_LOG": str(log),
         })
+        (base / "no-bus").mkdir()
+        env.pop("SUDO_USER", None)
         result = run(["sh", str(COMMAND)], env)
         assert "Goodnight!" in result.stdout
         assert log.read_text(encoding="utf-8").strip() == "-h now"
+
+
+
+def test_gnome_session_poweroff_uses_desktop_user_bus():
+    with tempfile.TemporaryDirectory() as directory:
+        base = pathlib.Path(directory)
+        runtime = base / "runtime"
+        runtime.mkdir()
+        bus_path = runtime / "bus"
+        with socket.socket(socket.AF_UNIX) as bus:
+            bus.bind(str(bus_path))
+
+        gnome_log = base / "gnome.log"
+        shutdown_log = base / "shutdown.log"
+        gnome_mock = executable(
+            base / "gnome-session-quit",
+            '#!/bin/sh\nprintf "%s|%s|%s\\n" "$*" "$XDG_RUNTIME_DIR" "$DBUS_SESSION_BUS_ADDRESS" >> "$GNOME_LOG"\nexit "${MOCK_EXIT:-0}"\n',
+        )
+        shutdown_mock = executable(
+            base / "shutdown",
+            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$SHUTDOWN_LOG"\n',
+        )
+        fake_sleep = executable(base / "sleep", "#!/bin/sh\nexit 0\n")
+        env = os.environ.copy()
+        env.update({
+            "PATH": f"{base}:{env.get('PATH', '')}",
+            "SLEEP_MY_SWEETIE_TEST_MODE": "1",
+            "SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT": str(gnome_mock),
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(runtime),
+            "SLEEP_MY_SWEETIE_SHUTDOWN": str(shutdown_mock),
+            "SUDO_USER": getpass.getuser(),
+            "GNOME_LOG": str(gnome_log),
+            "SHUTDOWN_LOG": str(shutdown_log),
+        })
+
+        result = run(["sh", str(COMMAND)], env)
+        assert "Requesting power-off confirmation from GNOME" in result.stdout
+        expected_bus = f"unix:path={bus_path}"
+        assert gnome_log.read_text(encoding="utf-8").strip() == (
+            f"--power-off|{runtime}|{expected_bus}"
+        )
+        assert not shutdown_log.exists(), "GNOME path must not fall back to direct shutdown"
+
+        # A cancelled/failed GNOME request must not fall back to direct shutdown.
+        env["MOCK_EXIT"] = "42"
+        cancelled = run(["sh", str(COMMAND)], env, check=False)
+        assert cancelled.returncode == 42
+        assert "cancelled or failed" in cancelled.stdout
+        assert len(gnome_log.read_text(encoding="utf-8").splitlines()) == 2
+        assert not shutdown_log.exists()
 
 
 def test_ctrl_c_cancels_before_shutdown():
@@ -87,8 +148,11 @@ def test_ctrl_c_cancels_before_shutdown():
             "PATH": f"{base}:{env.get('PATH', '')}",
             "SLEEP_MY_SWEETIE_SHUTDOWN": str(mock),
             "SLEEP_MY_SWEETIE_TEST_MODE": "1",
+            "SLEEP_MY_SWEETIE_RUNTIME_DIR": str(base / "no-bus"),
             "MOCK_LOG": str(log),
         })
+        (base / "no-bus").mkdir()
+        env.pop("SUDO_USER", None)
         process = subprocess.Popen(
             ["sh", str(COMMAND)], cwd=ROOT, env=env, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
@@ -166,6 +230,7 @@ def main():
         test_help_and_arguments,
         test_dry_run_never_calls_shutdown,
         test_normal_flow_uses_mock_shutdown,
+        test_gnome_session_poweroff_uses_desktop_user_bus,
         test_ctrl_c_cancels_before_shutdown,
         test_install_reinstall_conflicts_and_uninstall,
     )
