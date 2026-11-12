@@ -175,15 +175,7 @@ A successful diagnostic means the required local commands and socket path were f
 
 ### 4.7 Dry-run mode
 
-The dry-run branch prints what would happen and exits:
-
-    if [ "$DRY_RUN" -eq 1 ]; then
-        printf 'Dry run: no shutdown will be requested.\n'
-        printf 'Would execute: %s -h now\n' "$SHUTDOWN"
-        exit 0
-    fi
-
-The exit command stops the script. It never reaches the countdown or shutdown.
+The dry-run branch prints the route selected by the same GNOME session-bus check used by normal execution, then exits. It reports either that it would request GNOME's confirmation dialog for the desktop user or that it would execute the standard shutdown command with `-h now`. It never reaches the countdown or invokes either power-off route.
 
 ### 4.8 Check administrative privileges
 
@@ -207,14 +199,7 @@ The -x test checks whether the selected command exists and is executable. The sh
 
 A signal is a notification sent to a process by the operating system or another process.
 
-Ctrl+C normally sends SIGINT to the foreground process group. The script installs traps:
-
-    trap 'cancel_shutdown' INT
-    trap 'terminate_shutdown' TERM
-
-A trap tells the shell to run a chosen function when it receives a signal.
-
-The SIGINT trap prints a cancellation message and exits with status 130. The SIGTERM trap prints an interruption message and exits with status 143.
+Ctrl+C normally sends SIGINT to the foreground process group. The script installs inline traps for SIGINT and SIGTERM before the countdown. The SIGINT trap prints a cancellation message and exits with status 130. The SIGTERM trap prints an interruption message and exits with status 143. After the countdown finishes, the script removes both traps before making the GNOME or shutdown request.
 
 This prevents the script from continuing to shutdown after the user interrupts the countdown.
 
@@ -364,16 +349,17 @@ The suite checks:
 1. Help text, invalid argument handling, and version/changelog consistency.
 2. Doctor mode reports the GNOME route without requesting power-off.
 3. Doctor mode reports the standard-shutdown fallback without invoking it.
-4. Dry-run mode does not call shutdown.
-5. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
-6. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
-7. A failed or cancelled GNOME request does not fall back to shutdown.
-8. SIGINT during the countdown prevents either power-off request from running.
-9. Installation creates the executable and all aliases without requiring systemctl.
-10. Reinstallation is idempotent.
-11. Alias conflicts do not overwrite unrelated files.
-12. An unmanaged library directory is not overwritten.
-13. Uninstallation removes project-owned files and preserves unrelated files.
+4. Doctor mode returns an error when neither supported power-off route is available.
+5. Dry-run mode does not call shutdown.
+6. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
+7. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
+8. A failed or cancelled GNOME request does not fall back to shutdown.
+9. SIGINT during the countdown prevents either power-off request from running.
+10. Installation creates the executable and all aliases without requiring systemctl.
+11. Reinstallation is idempotent.
+12. Alias conflicts do not overwrite unrelated files.
+13. An unmanaged library directory is not overwritten.
+14. Uninstallation removes project-owned files and preserves unrelated files.
 
 A passing test means the tested behavior worked in that test environment. It does not prove that every Linux distribution, filesystem, shell, or hardware setup behaves identically.
 
@@ -428,7 +414,23 @@ The tests use it to create mock programs such as shutdown and sleep. These mock 
 
 **test_help_and_arguments**
 
-Runs the main script with --help and checks for important help text. It then supplies an unknown option and too many arguments, expecting exit status 2.
+Runs the main script with --help, --version, and -V. It checks the advertised options and matching version output, then supplies an unknown option and too many arguments, expecting exit status 2.
+
+**test_version_matches_changelog**
+
+Reads the canonical VERSION assignment from the executable and verifies that CHANGELOG.md contains a matching release heading.
+
+**test_doctor_uses_gnome_route_without_requesting_poweroff**
+
+Creates a temporary session-bus socket and mock GNOME command. It checks that doctor reports the GNOME route and verifies that the mock command was not executed.
+
+**test_doctor_uses_shutdown_fallback_without_requesting_poweroff**
+
+Provides no GNOME session bus and a harmless mock shutdown path. It checks that doctor reports the fallback route without executing the mock.
+
+**test_doctor_fails_when_no_poweroff_route_is_available**
+
+Provides neither a usable GNOME session bus nor an executable shutdown command. It expects a diagnostic error and verifies that no power-off request is made.
 
 **test_dry_run_never_calls_shutdown**
 
