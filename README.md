@@ -21,7 +21,7 @@ Then run any alias:
     sudo shut_down_sweetheart
     sudo time_to_sleep
 
-The command displays a friendly message, counts down from five, and requests a system power-off through the standard `shutdown -h now` command. Press Ctrl+C during the countdown to cancel.
+The command displays a friendly message and counts down from five. In an active GNOME desktop session, it asks GNOME to display the standard power-off confirmation. In other environments, it requests power-off through `shutdown -h now`. Press Ctrl+C during the countdown to cancel.
 
 ## Safe preview
 
@@ -35,7 +35,8 @@ Dry-run mode does not require root and never calls the shutdown command.
 - Five-second visible countdown.
 - Ctrl+C and SIGTERM handling during the countdown.
 - Dry-run mode for safe preview.
-- Uses the standard shutdown command so systemd/logind can coordinate the normal shutdown sequence.
+- Uses GNOME's standard power-off confirmation when launched with `sudo` from an active GNOME desktop session.
+- Uses the standard `shutdown -h now` command when no active GNOME session bus is available.
 - Installer and uninstaller with ownership-marker checks.
 - Refuses to overwrite unrelated command aliases or unmanaged install directories.
 - Safe integration tests using a mock shutdown command and temporary directories.
@@ -45,7 +46,8 @@ Dry-run mode does not require root and never calls the shutdown command.
 
 - Linux with systemd.
 - POSIX-compatible sh.
-- /usr/sbin/shutdown for normal use.
+- `/usr/sbin/shutdown` for non-GNOME sessions.
+- `runuser` and `gnome-session-quit` for GNOME desktop sessions.
 - Python 3 for the automated test suite.
 - ShellCheck for static analysis (optional locally; installed in GitHub Actions).
 
@@ -121,7 +123,7 @@ Run the safe integration tests:
 
     make test
 
-The test suite uses a mock shutdown executable and temporary installation prefixes. It checks help output, argument validation, dry-run behavior, normal command flow, Ctrl+C cancellation, installation, reinstall, conflicts, and uninstallation.
+The test suite uses mock shutdown and GNOME-session commands, a temporary Unix-socket path, and temporary installation prefixes. It checks help output, argument validation, dry-run behavior, both power-off request paths, GNOME cancellation without fallback, Ctrl+C cancellation, installation, reinstall, conflicts, and uninstallation.
 
 **The tests never invoke the real system power-off command.**
 
