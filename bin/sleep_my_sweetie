@@ -1,7 +1,7 @@
 #!/bin/sh
 # Sleep, My Sweetie — safe, cancellable systemd power-off command.
 set -eu
-VERSION=1.1.4
+VERSION=1.2.0
 PROGRAM_NAME=${0##*/}
 SHUTDOWN=${SLEEP_MY_SWEETIE_SHUTDOWN:-/usr/sbin/shutdown}
 GNOME_SESSION_QUIT=${SLEEP_MY_SWEETIE_GNOME_SESSION_QUIT:-/usr/bin/gnome-session-quit}
@@ -25,6 +25,7 @@ Usage:
 Options:
   -h, --help    Show this help message and exit
   -V, --version Show the program version and exit
+  --doctor      Check the local shutdown environment without powering off
   --dry-run     Show what would happen without powering off
 
 The command displays a five-second countdown. In an active GNOME desktop
@@ -43,9 +44,11 @@ if [ "$#" -gt 1 ]; then
     exit 2
 fi
 
+DOCTOR=0
 case "${1-}" in
     -h|--help) show_help; exit 0 ;;
     -V|--version) printf 'Sleep, My Sweetie %s\n' "$VERSION"; exit 0 ;;
+    --doctor) DOCTOR=1; DRY_RUN=0 ;;
     --dry-run) DRY_RUN=1 ;;
     "") DRY_RUN=0 ;;
     *)
@@ -55,12 +58,8 @@ case "${1-}" in
         ;;
 esac
 
-printf '\nGoodnight, my sweetie. ❤️\n'
-printf "You've worked hard today.\n"
-printf 'Time to rest.\n\n'
-
-# sudo sets SUDO_USER to the desktop user who launched this command. A live
-# session bus plus gnome-session-quit lets GNOME own the confirmation flow.
+# sudo sets SUDO_USER to the account that launched the command. Resolve that
+# account instead of assuming a fixed UID such as 1000.
 CALLING_USER=${SUDO_USER:-$(id -un)}
 CALLING_UID=$(id -u "$CALLING_USER" 2>/dev/null || true)
 RUNTIME_DIR=${SLEEP_MY_SWEETIE_RUNTIME_DIR:-/run/user/${CALLING_UID:-0}}
@@ -69,6 +68,49 @@ if [ -n "$CALLING_UID" ] && [ "$CALLING_UID" -gt 0 ] 2>/dev/null &&
     [ -S "$RUNTIME_DIR/bus" ] && [ -x "$GNOME_SESSION_QUIT" ]; then
     GNOME_AVAILABLE=1
 fi
+
+run_doctor() {
+    doctor_status=0
+    printf 'Sleep, My Sweetie diagnostic report\n'
+    printf 'Version: %s\n' "$VERSION"
+    printf 'Command path: %s\n' "$0"
+    printf 'Current user: %s (uid %s)\n' "$(id -un)" "$(id -u)"
+    printf 'Desktop user: %s\n' "$CALLING_USER"
+    printf 'Desktop: %s\n' "${XDG_CURRENT_DESKTOP:-not set}"
+    printf 'Session type: %s\n' "${XDG_SESSION_TYPE:-not set}"
+
+    if [ "$GNOME_AVAILABLE" -eq 1 ]; then
+        printf '[OK] GNOME session bus socket found: %s/bus\n' "$RUNTIME_DIR"
+        printf '[OK] GNOME session command is executable: %s\n' "$GNOME_SESSION_QUIT"
+        if [ -x "$RUNUSER" ]; then
+            printf '[OK] runuser is executable: %s\n' "$RUNUSER"
+            printf 'Selected power-off route: GNOME confirmation dialog\n'
+        else
+            printf '[ERROR] runuser is missing or not executable: %s\n' "$RUNUSER" >&2
+            doctor_status=1
+        fi
+    else
+        printf '[INFO] No usable GNOME session bus detected for %s.\n' "$CALLING_USER"
+        if [ -x "$SHUTDOWN" ]; then
+            printf '[OK] Standard shutdown command is executable: %s\n' "$SHUTDOWN"
+            printf 'Selected power-off route: standard shutdown command (-h now)\n'
+        else
+            printf '[ERROR] Shutdown command is missing or not executable: %s\n' "$SHUTDOWN" >&2
+            doctor_status=1
+        fi
+    fi
+    printf 'No power-off request was made.\n'
+    return "$doctor_status"
+}
+
+if [ "$DOCTOR" -eq 1 ]; then
+    run_doctor
+    exit $?
+fi
+
+printf '\nGoodnight, my sweetie. ❤️\n'
+printf "You've worked hard today.\n"
+printf 'Time to rest.\n\n'
 
 if [ "$DRY_RUN" -eq 1 ]; then
     printf 'Dry run: no shutdown will be requested.\n'
