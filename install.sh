@@ -3,7 +3,6 @@
 set -eu
 
 PREFIX=${PREFIX:-/usr/local}
-SYSTEMCTL=${SLEEP_MY_SWEETIE_SYSTEMCTL:-/usr/bin/systemctl}
 MARKER_TEXT='Sleep, My Sweetie managed installation v1'
 
 # Custom prefixes support packaging and safe integration tests.
@@ -43,7 +42,6 @@ time_to_sleep
 '
 
 [ -f "$SOURCE_SCRIPT" ] || { printf 'Error: cannot find %s\n' "$SOURCE_SCRIPT" >&2; exit 1; }
-[ -x "$SYSTEMCTL" ] || { printf 'Error: systemctl executable not found: %s\n' "$SYSTEMCTL" >&2; exit 1; }
 
 if [ -L "$PREFIX" ] || { [ -e "$PREFIX" ] && [ ! -d "$PREFIX" ]; }; then
     printf 'Error: PREFIX must be a real directory: %s\n' "$PREFIX" >&2

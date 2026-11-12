@@ -26,7 +26,8 @@ When a user runs an alias with `sudo`, the program prints a message and displays
     sleep-my-sweetie/
     ├── .github/
     │   └── workflows/
-    │       └── ci.yml
+    │       ├── ci.yml
+    │       └── release.yml
     ├── bin/
     │   └── sleep_my_sweetie
     ├── tests/
@@ -50,7 +51,8 @@ When a user runs an alias with `sudo`, the program prints a message and displays
 | uninstall.sh | Removes only a verified installation |
 | tests/test_suite.py | Runs safe automated tests |
 | Makefile | Provides short development commands |
-| .github/workflows/ci.yml | Runs tests and ShellCheck on GitHub |
+| .github/workflows/ci.yml | Runs tests and ShellCheck on Ubuntu LTS versions |
+| .github/workflows/release.yml | Verifies version tags and creates GitHub Releases |
 | README.md | User-facing installation and usage guide |
 | CODE_WALKTHROUGH.md | Detailed explanation of the code |
 | CONTRIBUTING.md | Contributor guidance |
@@ -148,10 +150,11 @@ The script first checks the number of arguments:
 
 $# is the number of arguments supplied by the user. The program accepts no more than one argument.
 
-The case statement recognizes five situations:
+The case statement recognizes six situations:
 
 - -h or --help: show help and exit successfully.
 - -V or --version: print VERSION and exit successfully.
+- --doctor: report the environment and selected power-off route without requesting power-off.
 - --dry-run: show the planned action without requesting shutdown.
 - No argument: continue with the normal shutdown flow.
 - Any other argument: print an error and exit with status 2.
@@ -164,19 +167,17 @@ The printf commands display the greeting. printf is used instead of echo because
 
 The backslash-n sequence means a newline.
 
-### 4.6 Dry-run mode
+### 4.6 Diagnostics with --doctor
 
-The dry-run branch prints what would happen and exits:
+The diagnostic mode is deliberately read-only. It reports the program version, current and desktop user, desktop/session environment, whether a GNOME session-bus socket is available, and whether the executables required by the selected route are present. It reports either the GNOME confirmation route or the standard shutdown fallback. It does not display the countdown and does not invoke either power-off command.
 
-    if [ "$DRY_RUN" -eq 1 ]; then
-        printf 'Dry run: no shutdown will be requested.\n'
-        printf 'Would execute: %s -h now\n' "$SHUTDOWN"
-        exit 0
-    fi
+A successful diagnostic means the required local commands and socket path were found. It does not prove that GNOME will accept a future request, that system authorization will succeed, or that systemd inhibitors will allow power-off.
 
-The exit command stops the script. It never reaches the countdown or shutdown.
+### 4.7 Dry-run mode
 
-### 4.7 Check administrative privileges
+The dry-run branch prints the route selected by the same GNOME session-bus check used by normal execution, then exits. It reports either that it would request GNOME's confirmation dialog for the desktop user or that it would execute the standard shutdown command with `-h now`. It never reaches the countdown or invokes either power-off route.
+
+### 4.8 Check administrative privileges
 
     if [ "$(id -u)" -ne 0 ] && [ "$TEST_MODE" != 1 ]; then
         ...
@@ -186,7 +187,7 @@ id -u prints the numeric user ID of the current process. On Linux, user ID 0 is 
 
 The normal command asks the user to run it with sudo. The test-mode exception is used only by automated tests with harmless mock commands. Do not set test mode for normal use.
 
-### 4.8 Check shutdown
+### 4.9 Check shutdown
 
     if [ ! -x "$SHUTDOWN" ]; then
         ...
@@ -194,22 +195,15 @@ The normal command asks the user to run it with sudo. The test-mode exception is
 
 The -x test checks whether the selected command exists and is executable. The shutdown executable is required only when no GNOME session bus is available; the GNOME path instead requires runuser for switching back to the desktop user.
 
-### 4.9 Signals and Ctrl+C
+### 4.10 Signals and Ctrl+C
 
 A signal is a notification sent to a process by the operating system or another process.
 
-Ctrl+C normally sends SIGINT to the foreground process group. The script installs traps:
-
-    trap 'cancel_shutdown' INT
-    trap 'terminate_shutdown' TERM
-
-A trap tells the shell to run a chosen function when it receives a signal.
-
-The SIGINT trap prints a cancellation message and exits with status 130. The SIGTERM trap prints an interruption message and exits with status 143.
+Ctrl+C normally sends SIGINT to the foreground process group. The script installs inline traps for SIGINT and SIGTERM before the countdown. The SIGINT trap prints a cancellation message and exits with status 130. The SIGTERM trap prints an interruption message and exits with status 143. After the countdown finishes, the script removes both traps before making the GNOME or shutdown request.
 
 This prevents the script from continuing to shutdown after the user interrupts the countdown.
 
-### 4.10 The countdown loop
+### 4.11 The countdown loop
 
     remaining=5
     while [ "$remaining" -gt 0 ]; do
@@ -226,7 +220,7 @@ This prevents the script from continuing to shutdown after the user interrupts t
 
 The visible sequence is 5, 4, 3, 2, 1.
 
-### 4.11 Request the power-off
+### 4.12 Request the power-off
 
 When the countdown finishes, the script removes its custom signal handlers and prints the final message.
 
@@ -246,7 +240,7 @@ Both paths can lead to a real power-off. Save your work before running the comma
 
 ## 5. The installer: install.sh
 
-The installer copies the command to a system location and creates symbolic links.
+The installer copies the command to a system location and creates symbolic links. It does not need systemctl at installation time; the executable selected for power-off is checked when the command runs.
 
 ### 5.1 Installation prefix
 
@@ -352,17 +346,20 @@ The installer tests set PREFIX to a folder inside this temporary directory. They
 
 The suite checks:
 
-1. Help text and invalid argument handling.
-2. Dry-run mode does not call shutdown.
-3. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
-4. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
-5. A failed or cancelled GNOME request does not fall back to shutdown.
-6. SIGINT during the countdown prevents either power-off request from running.
-7. Installation creates the executable and all aliases.
-8. Reinstallation is idempotent.
-9. Alias conflicts do not overwrite unrelated files.
-10. An unmanaged library directory is not overwritten.
-11. Uninstallation removes project-owned files and preserves unrelated files.
+1. Help text, invalid argument handling, and version/changelog consistency.
+2. Doctor mode reports the GNOME route without requesting power-off.
+3. Doctor mode reports the standard-shutdown fallback without invoking it.
+4. Doctor mode returns an error when neither supported power-off route is available.
+5. Dry-run mode does not call shutdown.
+6. Normal non-GNOME execution reaches the mock shutdown with the `-h now` arguments.
+7. GNOME-session execution passes the expected session-bus environment to the mock and does not fall back to shutdown.
+8. A failed or cancelled GNOME request does not fall back to shutdown.
+9. SIGINT during the countdown prevents either power-off request from running.
+10. Installation creates the executable and all aliases without requiring systemctl.
+11. Reinstallation is idempotent.
+12. Alias conflicts do not overwrite unrelated files.
+13. An unmanaged library directory is not overwritten.
+14. Uninstallation removes project-owned files and preserves unrelated files.
 
 A passing test means the tested behavior worked in that test environment. It does not prove that every Linux distribution, filesystem, shell, or hardware setup behaves identically.
 
@@ -417,7 +414,23 @@ The tests use it to create mock programs such as shutdown and sleep. These mock 
 
 **test_help_and_arguments**
 
-Runs the main script with --help and checks for important help text. It then supplies an unknown option and too many arguments, expecting exit status 2.
+Runs the main script with --help, --version, and -V. It checks the advertised options and matching version output, then supplies an unknown option and too many arguments, expecting exit status 2.
+
+**test_version_matches_changelog**
+
+Reads the canonical VERSION assignment from the executable and verifies that CHANGELOG.md contains a matching release heading.
+
+**test_doctor_uses_gnome_route_without_requesting_poweroff**
+
+Creates a temporary session-bus socket and mock GNOME command. It checks that doctor reports the GNOME route and verifies that the mock command was not executed.
+
+**test_doctor_uses_shutdown_fallback_without_requesting_poweroff**
+
+Provides no GNOME session bus and a harmless mock shutdown path. It checks that doctor reports the fallback route without executing the mock.
+
+**test_doctor_fails_when_no_poweroff_route_is_available**
+
+Provides neither a usable GNOME session bus nor an executable shutdown command. It expects a diagnostic error and verifies that no power-off request is made.
 
 **test_dry_run_never_calls_shutdown**
 
@@ -480,11 +493,11 @@ ShellCheck does not prove a script is bug-free. It is an additional review tool.
 
 ## 10. GitHub Actions continuous integration
 
-The workflow lives at .github/workflows/ci.yml.
+The CI workflow lives at .github/workflows/ci.yml. It runs the test suite and ShellCheck on Ubuntu 22.04 and 24.04.
 
 It runs when a commit is pushed, a pull request is opened or updated, or someone manually starts the workflow.
 
-The workflow checks out the repository, prepares Python, installs ShellCheck, runs the tests, and runs the linter.
+The workflow checks out the repository, prepares Python, installs ShellCheck, runs the tests, and runs the linter on both configured Ubuntu versions.
 
 This is called continuous integration (CI): every proposed change receives the same automated checks.
 
@@ -500,7 +513,7 @@ The changelog records user-visible changes. Semantic Versioning uses three numbe
 
 For example, 1.1.0 means the first minor feature update after 1.0.0.
 
-A Git tag such as v1.1.0 can point to the commit representing that release. A changelog entry and a Git tag are related but are not the same thing.
+A Git tag such as v1.2.0 points to the commit representing that release. A changelog entry, a Git tag, and a GitHub Release are separate artifacts. The release workflow runs for pushed v* tags, repeats tests and ShellCheck, and creates the GitHub Release with generated notes.
 
 ## 12. Safe manual workflow
 

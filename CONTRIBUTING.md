@@ -24,7 +24,11 @@ Clone the repository and run:
     make test
     make lint
 
-The test suite uses mock shutdown and GNOME-session executables, a temporary Unix-socket path, and temporary installation prefixes. It must never call the real system power-off command.
+Check the local shutdown environment safely with:
+
+    sh bin/sleep_my_sweetie --doctor
+
+The test suite uses mock shutdown and GNOME-session executables, a temporary Unix-socket path, and temporary installation prefixes. It also checks diagnostic-only execution, version/changelog consistency, and that installation does not depend on systemctl. It must never call the real system power-off command.
 
 ## Pull requests
 
@@ -42,3 +46,15 @@ Keep pull requests focused and avoid adding features that make this small utilit
 Changes to install paths, symbolic links, privilege checks, signal handling, or shutdown-command execution require particular care. Explain how the change avoids overwriting unrelated files and how it is tested safely.
 
 Thank you for helping improve the project.
+
+
+## Release process
+
+- Update the `VERSION` value in `bin/sleep_my_sweetie`.
+- Add a matching dated section at the top of `CHANGELOG.md`.
+- Keep README and code walkthrough behavior descriptions in sync.
+- Run `make test` and `make lint`, then verify the GitHub Actions checks.
+- Merge the release-ready change to `main`.
+- Create and push an annotated version tag that exactly matches the program version (for example, `v1.2.0`).
+
+Pushing a `v*` tag starts `.github/workflows/release.yml`. The workflow reruns tests and ShellCheck against the tagged source before creating the GitHub Release. A changelog entry, a tag, and a GitHub Release are separate artifacts; verify all three.

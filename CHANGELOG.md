@@ -2,6 +2,13 @@
 
 Notable project changes are documented here.
 
+## [1.2.0] - 2026-11-12
+
+- Add `--doctor` to inspect the current user, desktop session, GNOME session bus, required executables, and selected power-off route without initiating power-off.
+- Remove the installer's obsolete systemctl prerequisite; installation now validates only files and paths it actually needs.
+- Add automated coverage for both diagnostic routes, version/changelog consistency, and installation without systemctl.
+- Update user, security, contributor, and code walkthrough documentation.
+
 ## [1.1.4] - 2026-11-12
 
 - Add `--version` and `-V` options to display the program version without starting the countdown or requesting power-off.
