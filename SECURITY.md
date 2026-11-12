@@ -16,6 +16,7 @@ It does not intentionally collect data, communicate over a network, install a ba
 - Save your work before running any shutdown alias.
 - Read the scripts before running them with administrative privileges.
 - Use --dry-run to preview the main command safely.
+- Use --doctor to inspect the local environment; it does not request power-off.
 - Do not run the real shutdown command as part of automated tests.
 - The test suite uses a mock shutdown executable and temporary directories.
 
