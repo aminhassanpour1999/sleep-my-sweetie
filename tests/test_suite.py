@@ -44,8 +44,7 @@ def test_help_and_arguments():
     assert "goodnight_my_love" in help_result.stdout
     long_version = run(["sh", str(COMMAND), "--version"])
     short_version = run(["sh", str(COMMAND), "-V"])
-    assert long_version.stdout.strip() == "Sleep, My Sweetie 1.1.4"
-    assert short_version.stdout.strip() == long_version.stdout.strip()
+        assert short_version.stdout.strip() == long_version.stdout.strip()
     assert long_version.stdout.strip() == "Sleep, My Sweetie 1.2.0"
     invalid = run(["sh", str(COMMAND), "--invalid"], check=False)
     assert invalid.returncode == 2
