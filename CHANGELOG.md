@@ -2,6 +2,11 @@
 
 Notable project changes are documented here.
 
+## [1.1.1] - 2026-11-11
+
+- Switched the final power-off request to the standard `shutdown --poweroff now` command, allowing systemd/logind to handle the normal shutdown sequence without systemctl's interactive inhibitor pre-check.
+- Updated safe tests and documentation to use a mocked shutdown executable.
+
 ## [1.1.0] - 2026-11-11
 
 - Added a safe dry-run option to preview the main command.

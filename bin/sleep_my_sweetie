@@ -2,7 +2,7 @@
 # Sleep, My Sweetie — safe, cancellable systemd power-off command.
 set -eu
 PROGRAM_NAME=${0##*/}
-SYSTEMCTL=${SLEEP_MY_SWEETIE_SYSTEMCTL:-/usr/bin/systemctl}
+SHUTDOWN=${SLEEP_MY_SWEETIE_SHUTDOWN:-/usr/sbin/shutdown}
 
 show_help() {
     cat <<'HELP'
@@ -23,9 +23,9 @@ Options:
   --dry-run     Show what would happen without powering off
 
 The command displays a five-second countdown and then requests a system
-power-off using systemctl. Press Ctrl+C during the countdown to cancel.
+power-off using the standard shutdown command. Press Ctrl+C during the countdown to cancel.
 
-SLEEP_MY_SWEETIE_SYSTEMCTL is intended for automated tests only.
+SLEEP_MY_SWEETIE_SHUTDOWN is intended for automated tests only.
 HELP
 }
 
@@ -52,18 +52,18 @@ printf 'Time to rest.\n\n'
 
 if [ "$DRY_RUN" -eq 1 ]; then
     printf 'Dry run: no shutdown will be requested.\n'
-    printf 'Would execute: %s poweroff\n' "$SYSTEMCTL"
+    printf 'Would execute: %s --poweroff now\n' "$SHUTDOWN"
     exit 0
 fi
 
-# This test-only switch is used with a harmless mock systemctl in CI.
+# This test-only switch is used with a harmless mock shutdown command in CI.
 if [ "$(id -u)" -ne 0 ] && [ "${SLEEP_MY_SWEETIE_TEST_MODE:-0}" != 1 ]; then
     printf 'Please run this command with sudo:\n  sudo %s\n' "$PROGRAM_NAME" >&2
     exit 1
 fi
 
-if [ ! -x "$SYSTEMCTL" ]; then
-    printf 'Error: systemctl executable not found: %s\n' "$SYSTEMCTL" >&2
+if [ ! -x "$SHUTDOWN" ]; then
+    printf 'Error: shutdown executable not found: %s\n' "$SHUTDOWN" >&2
     exit 1
 fi
 
@@ -80,4 +80,4 @@ done
 
 trap - INT TERM
 printf 'Goodnight! ❤️\n'
-exec "$SYSTEMCTL" poweroff
+exec "$SHUTDOWN" --poweroff now
